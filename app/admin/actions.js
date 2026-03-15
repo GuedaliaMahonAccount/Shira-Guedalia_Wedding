@@ -2,6 +2,7 @@
 
 import clientPromise from "../../lib/db";
 import * as XLSX from 'xlsx';
+import { ObjectId } from 'mongodb';
 
 const ADMIN_PASSCODE = "guedalia050504";
 
@@ -133,5 +134,21 @@ export async function exportGuestsData(passcode, exportType = "all") {
     } catch (error) {
         console.error("Failed to export data", error);
         return { error: "שגיאה בייצוא הנתונים" };
+    }
+}
+
+export async function deleteRsvp(passcode, id) {
+    if (passcode !== ADMIN_PASSCODE) {
+        return { error: "סיסמה שגויה" };
+    }
+
+    try {
+        const client = await clientPromise;
+        const db = client.db("wedding");
+        await db.collection("rsvps").deleteOne({ _id: new ObjectId(id) });
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete rsvp", error);
+        return { error: "שגיאה במחיקת הרשומה" };
     }
 }

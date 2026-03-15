@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { fetchStats, exportGuestsData } from "./actions";
+import { fetchStats, exportGuestsData, deleteRsvp } from "./actions";
 
 // ── Animated counter hook ────────────────────────────────────────
 function useCountUp(target, duration = 1200, started = false) {
@@ -234,6 +234,17 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleDelete = async (id, name) => {
+        if (!window.confirm(`האם אתה בטוח שברצונך למחוק את הרשומה של ${name}?`)) return;
+        
+        const res = await deleteRsvp(passcode, id);
+        if (res.error) {
+            alert(res.error);
+        } else {
+            handleLogin(); // refresh table
+        }
+    };
+
     // ── Login Screen ─────────────────────────────────────────────
     if (!isAuthenticated) {
         return (
@@ -456,6 +467,7 @@ export default function AdminDashboard() {
                                             <th>אירועים</th>
                                             <th>טלפון</th>
                                             <th>תאריך</th>
+                                            <th>פעולות</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -482,11 +494,14 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="td-phone" dir="ltr">{rsvp.phone || "—"}</td>
                                                 <td className="td-date">{new Date(rsvp.created_at).toLocaleDateString('he-IL')}</td>
+                                                <td className="td-actions">
+                                                    <button onClick={() => handleDelete(rsvp.id, rsvp.names)} className="delete-btn">מחיקה</button>
+                                                </td>
                                             </tr>
                                         ))}
                                         {data.rsvps.length === 0 && (
                                             <tr>
-                                                <td colSpan="6" className="td-empty">אין עדיין תגובות...</td>
+                                                <td colSpan="7" className="td-empty">אין עדיין תגובות...</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -839,6 +854,20 @@ const adminStyles = `
   .td-phone { color: var(--text-light); font-size: 0.82rem; }
   .td-date { color: var(--text-light); font-size: 0.78rem; }
   .td-empty { padding: 2.5rem; text-align: center; color: var(--text-light); }
+
+  .td-actions { text-align: center; }
+  .delete-btn {
+    background: rgba(201,128,106,0.1);
+    color: #9A4030;
+    border: 1px solid rgba(201,128,106,0.3);
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+  }
+  .delete-btn:hover { background: rgba(201,128,106,0.2); }
 
   .badge {
     display: inline-block;
