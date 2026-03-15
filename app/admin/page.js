@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { fetchStats } from "./actions";
+import { fetchStats, exportGuestsData } from "./actions";
 
 // ── Animated counter hook ────────────────────────────────────────
 function useCountUp(target, duration = 1200, started = false) {
@@ -196,13 +196,42 @@ export default function AdminDashboard() {
     const [data, setData] = useState(null);
     const [totalInvitations, setTotalInvitations] = useState(0);
     const [showTable, setShowTable] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const handleLogin = async (e) => {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         setError(null);
         const res = await fetchStats(passcode);
         if (res.error) { setError(res.error); }
         else { setData(res); setIsAuthenticated(true); }
+    };
+
+    const handleExport = async (type) => {
+        setIsExporting(true);
+        const res = await exportGuestsData(passcode, type);
+        setIsExporting(false);
+        if (res.error) {
+            alert(res.error);
+        } else {
+            const binaryString = window.atob(res.base64Excel);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `guests_export_${type}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Re-fetch stats to update UI (just in case)
+            handleLogin(); 
+            alert("הייצוא בוצע בהצלחה!");
+        }
     };
 
     // ── Login Screen ─────────────────────────────────────────────
@@ -398,13 +427,21 @@ export default function AdminDashboard() {
                             <h2 className="table-title">רשימת משיבים</h2>
                             <p className="table-sub">{data.rsvps.length} רשומות</p>
                         </div>
-                        <button className="table-toggle" onClick={() => setShowTable(t => !t)}>
-                            {showTable ? "הסתר טבלה" : "הצג טבלה"}
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                style={{ transform: showTable ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>
-                                <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                            </svg>
-                        </button>
+                        <div className="table-actions" style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button className="table-toggle" onClick={() => handleExport('all')} disabled={isExporting}>
+                                {isExporting ? "מייצא..." : "יצוא הכל (Excel)"}
+                            </button>
+                            <button className="table-toggle" onClick={() => handleExport('new')} disabled={isExporting} style={{ background: 'linear-gradient(135deg, #4A8B5C, #5C9F6E)' }}>
+                                {isExporting ? "מייצא..." : "יצוא חדשים (Excel)"}
+                            </button>
+                            <button className="table-toggle" onClick={() => setShowTable(t => !t)}>
+                                {showTable ? "הסתר טבלה" : "הצג טבלה"}
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                    style={{ transform: showTable ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>
+                                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     {showTable && (

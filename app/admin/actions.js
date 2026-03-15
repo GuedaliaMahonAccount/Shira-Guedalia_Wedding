@@ -1,6 +1,7 @@
 "use server";
 
 import clientPromise from "../../lib/db";
+import * as XLSX from 'xlsx';
 
 const ADMIN_PASSCODE = "guedalia050504";
 
@@ -61,5 +62,76 @@ export async function fetchStats(passcode) {
     } catch (error) {
         console.error("Failed to fetch statistics", error);
         return { error: "שגיאה בטעינת הנתונים" };
+    }
+}
+
+export async function exportGuestsData(passcode, exportType = "all") {
+    if (passcode !== ADMIN_PASSCODE) {
+        return { error: "סיסמה שגויה" };
+    }
+
+    try {
+        const client = await clientPromise;
+        const db = client.db("wedding");
+
+        const query = (exportType === "new") ? { is_exported: { $ne: true } } : {};
+        
+        const docs = await db.collection("rsvps").find(query).toArray();
+        if (docs.length === 0) {
+            return { error: "אין נתונים חדשים לייצוא" };
+        }
+
+        const headers = [
+            "*שם המוזמן (חובה)",
+            "נייד",
+            "כמה יגיעו?",
+            "מהצד של...",
+            "סטטוס הגעה (יגיע, מתלבט, לא יגיע)",
+            "האם נשלחה הזמנה? (נשלחה, לא נשלחה)",
+            "mail",
+            "הערות (מלל חופשי)",
+            "מספר הטלפון של המשתמש שהכניס את המוזמן באפליקציה"
+        ];
+
+        const rows = docs.map(doc => {
+            const isAttendingText = doc.is_attending === 1 ? "יגיע" : "לא יגיע";
+            let comments = doc.reason || "";
+            // Optionally, add guest names to notes
+            if (doc.guests && doc.guests.length > 0) {
+                 const guestList = doc.guests.map(g => g.name || "אורח").join(", ");
+                 comments += comments ? ` | מגיעים: ${guestList}` : `מגיעים: ${guestList}`;
+            }
+
+            return {
+                [headers[0]]: doc.names || "",
+                [headers[1]]: doc.phone || "",
+                [headers[2]]: doc.guest_count || 0,
+                [headers[3]]: doc.side || "",
+                [headers[4]]: isAttendingText,
+                [headers[5]]: "",
+                [headers[6]]: "",
+                [headers[7]]: comments,
+                [headers[8]]: ""
+            };
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Guests");
+
+        const base64Excel = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
+
+        if (exportType === "new" || exportType === "all") {
+            const ids = docs.map(d => d._id);
+            await db.collection("rsvps").updateMany(
+                { _id: { $in: ids } },
+                { $set: { is_exported: true, exported_at: new Date() } }
+            );
+        }
+
+        return { success: true, base64Excel };
+    } catch (error) {
+        console.error("Failed to export data", error);
+        return { error: "שגיאה בייצוא הנתונים" };
     }
 }

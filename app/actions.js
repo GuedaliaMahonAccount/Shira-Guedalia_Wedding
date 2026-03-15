@@ -17,6 +17,7 @@ export async function submitRSVP(data) {
     let attendance_type = "";
     let guests = [];
     let reason = "";
+    let side = data.side || "";
 
     let searchNames = [];
 
@@ -53,7 +54,7 @@ export async function submitRSVP(data) {
             if (existingRsvp) {
                 // Check if identical
                 let isIdentical = false;
-                if (existingRsvp.is_attending === is_attending && existingRsvp.guest_count === guest_count) {
+                if (existingRsvp.is_attending === is_attending && existingRsvp.guest_count === guest_count && (existingRsvp.side || "") === side) {
                     if (is_attending === 1) {
                         if (existingRsvp.guests && existingRsvp.guests.length === guests.length) {
                             isIdentical = existingRsvp.guests.every((eg, i) => {
@@ -83,7 +84,8 @@ export async function submitRSVP(data) {
                             names: existingRsvp.names,
                             guests: existingRsvp.guests || [],
                             phone: existingRsvp.phone || "",
-                            reason: existingRsvp.reason || ""
+                            reason: existingRsvp.reason || "",
+                            side: existingRsvp.side || ""
                         }
                     };
                 }
@@ -101,6 +103,7 @@ export async function submitRSVP(data) {
                         attendance_type,
                         guests,
                         reason,
+                        side,
                         is_attending,
                         updated_at: new Date()
                     }
@@ -114,6 +117,7 @@ export async function submitRSVP(data) {
                 attendance_type,
                 guests,
                 reason,
+                side,
                 is_attending,
                 created_at: new Date()
             });

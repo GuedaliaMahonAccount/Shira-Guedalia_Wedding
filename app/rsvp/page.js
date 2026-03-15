@@ -25,6 +25,7 @@ export default function RSVPPage() {
     const [noGuests, setNoGuests] = useState([{ name: "" }]);
     const [noGuestCount, setNoGuestCount] = useState(1);
     const [noReason, setNoReason] = useState("");
+    const [side, setSide] = useState("");
 
     const handleGuestCountChange = (e) => {
         let count = parseInt(e.target.value) || 1;
@@ -80,6 +81,7 @@ export default function RSVPPage() {
             guests: isAttending === 'yes' ? guests : noGuests,
             names: isAttending === 'no' ? noGuests.map(g => g.name).filter(Boolean).join(", ") : "",
             reason: isAttending === 'no' ? noReason : "",
+            side: isAttending === 'yes' ? side : "",
             forceUpdateId
         };
         const response = await submitRSVP(data);
@@ -210,6 +212,7 @@ export default function RSVPPage() {
                                         }
                                         setNoReason(existingRsvpToConfirm.reason);
                                     }
+                                    if (existingRsvpToConfirm.side) setSide(existingRsvpToConfirm.side);
                                     if (existingRsvpToConfirm.phone) setPhone(existingRsvpToConfirm.phone);
                                     setExistingRsvpToConfirm(null);
                                     setResult(null);
@@ -286,6 +289,20 @@ export default function RSVPPage() {
                                 </div>
 
                                 <div className="field-group">
+                                    <label className="field-label">מאיזה צד אתם מגיעים? (לא חובה)</label>
+                                    <div className="side-choice" style={{ display: 'flex', gap: '1.5rem', marginTop: '0.4rem' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-dark)' }}>
+                                            <input type="radio" value="חתן" name="sideChoice" checked={side === 'חתן'} onChange={(e) => setSide(e.target.value)} />
+                                            <span>החתן</span>
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-dark)' }}>
+                                            <input type="radio" value="כלה" name="sideChoice" checked={side === 'כלה'} onChange={(e) => setSide(e.target.value)} />
+                                            <span>הכלה</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="field-group" style={{ marginTop: '1rem' }}>
                                     <label htmlFor="phone" className="field-label">מספר טלפון (לא חובה)</label>
                                     <input
                                         id="phone" type="tel" dir="ltr" value={phone}
