@@ -55,7 +55,10 @@ export default function Home() {
 
         {/* Names */}
         <section className="names-section">
-          <span className="name name-bride">שירה</span>
+          <div className="name-wrapper">
+            <span className="name name-bride">שירה</span>
+            <span className="family-name">שמואל</span>
+          </div>
           <div className="ampersand-wrap">
             <svg viewBox="0 0 60 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="ampersand-svg">
               <path d="M30,5 Q45,5 45,20 Q45,32 30,38 Q45,44 48,58 Q51,72 38,75 Q25,78 20,68 Q15,58 22,50 L30,38 Q15,32 15,20 Q15,5 30,5Z" 
@@ -64,7 +67,10 @@ export default function Home() {
                     fill="rgba(180,140,100,0.12)" stroke="rgba(180,140,100,0.5)" strokeWidth="1" />
             </svg>
           </div>
-          <span className="name name-groom">גדליה</span>
+          <div className="name-wrapper">
+            <span className="name name-groom">גדליה</span>
+            <span className="family-name">סבע</span>
+          </div>
         </section>
 
         {/* Divider */}
@@ -89,13 +95,13 @@ export default function Home() {
         <section className="date-section">
           <p className="save-date-label">Save the Date</p>
           <div className="date-display">
-            <span className="date-num">ג׳</span>
+            <span className="date-num">י״ח</span>
             <span className="date-sep">·</span>
-            <span className="date-month">בספטמבר</span>
+            <span className="date-month">בטבת</span>
             <span className="date-sep">·</span>
             <span className="date-year">תשפ״ז</span>
           </div>
-          <p className="date-gregorian">3 בספטמבר 2026</p>
+          <p className="date-gregorian">יום שני · 28 בדצמבר 2026</p>
         </section>
 
         {/* Location */}
@@ -107,8 +113,9 @@ export default function Home() {
               <circle cx="12" cy="9" r="2.5" stroke="rgba(180,140,100,0.7)" strokeWidth="1" fill="rgba(180,140,100,0.15)"/>
             </svg>
           </div>
-          <p className="location-address">רחוב Ino Shaki 6</p>
-          <p className="location-time">בשעה 18:00</p>
+          <p className="location-address">VIGO אירועים, בילו</p>
+          <p className="location-time">בשעה 19:30</p>
+          <p className="dress-code">לבוש צנוע הולם את האירוע</p>
         </section>
 
         {/* Bottom ornament */}

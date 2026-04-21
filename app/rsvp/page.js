@@ -20,7 +20,7 @@ export default function RSVPPage() {
     }, []);
 
     const [guestCount, setGuestCount] = useState(1);
-    const [guests, setGuests] = useState([{ name: "", chuppah: true, dance: true }]);
+    const [guests, setGuests] = useState([{ name: "", chuppah: true, meal: true, dance: true }]);
     const [phone, setPhone] = useState("");
     const [noGuests, setNoGuests] = useState([{ name: "" }]);
     const [noGuestCount, setNoGuestCount] = useState(1);
@@ -35,7 +35,7 @@ export default function RSVPPage() {
         setGuests(prev => {
             const next = [...prev];
             if (count > prev.length) {
-                for (let i = prev.length; i < count; i++) next.push({ name: "", chuppah: true, dance: true });
+                for (let i = prev.length; i < count; i++) next.push({ name: "", chuppah: true, meal: true, dance: true });
             } else {
                 next.splice(count);
             }
@@ -198,7 +198,7 @@ export default function RSVPPage() {
                                     setIsAttending(existingRsvpToConfirm.is_attending === 1 ? 'yes' : 'no');
                                     if (existingRsvpToConfirm.is_attending === 1) {
                                         setGuestCount(existingRsvpToConfirm.guest_count);
-                                        setGuests(existingRsvpToConfirm.guests?.length > 0 ? existingRsvpToConfirm.guests : [{ name: "", chuppah: true, dance: true }]);
+                                        setGuests(existingRsvpToConfirm.guests?.length > 0 ? existingRsvpToConfirm.guests : [{ name: "", chuppah: true, meal: true, dance: true }]);
                                     } else {
                                         setNoGuestCount(existingRsvpToConfirm.guest_count);
                                         if (existingRsvpToConfirm.guests?.length > 0) {
@@ -279,6 +279,11 @@ export default function RSVPPage() {
                                                     <span>חופה</span>
                                                 </label>
                                                 <label className="event-check">
+                                                    <input type="checkbox" checked={guest.meal} onChange={(e) => handleGuestChange(idx, "meal", e.target.checked)} className="checkbox" />
+                                                    <span className="checkmark"></span>
+                                                    <span>לשבת לאכול</span>
+                                                </label>
+                                                <label className="event-check">
                                                     <input type="checkbox" checked={guest.dance} onChange={(e) => handleGuestChange(idx, "dance", e.target.checked)} className="checkbox" />
                                                     <span className="checkmark"></span>
                                                     <span>ריקודים</span>
@@ -290,12 +295,12 @@ export default function RSVPPage() {
 
                                 <div className="field-group">
                                     <label className="field-label">מאיזה צד אתם מגיעים? (לא חובה)</label>
-                                    <div className="side-choice" style={{ display: 'flex', gap: '1.5rem', marginTop: '0.4rem' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-dark)' }}>
+                                    <div className="side-choice">
+                                        <label>
                                             <input type="radio" value="חתן" name="sideChoice" checked={side === 'חתן'} onChange={(e) => setSide(e.target.value)} />
                                             <span>החתן</span>
                                         </label>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-dark)' }}>
+                                        <label>
                                             <input type="radio" value="כלה" name="sideChoice" checked={side === 'כלה'} onChange={(e) => setSide(e.target.value)} />
                                             <span>הכלה</span>
                                         </label>
@@ -317,7 +322,7 @@ export default function RSVPPage() {
                             <div className="form-section">
                                 <div className="form-section-header">
                                     <div className="form-section-emoji">🌸</div>
-                                    <h3 className="form-section-title">חבל... אולי בפעם הבאה</h3>
+                                    <h3 className="form-section-title">חבל...</h3>
                                     <button type="button" onClick={() => { setIsAttending(null); setForceUpdateId(null); }} className="change-mind-link">
                                         שנייה, התחרטתי / טעות
                                     </button>
@@ -375,7 +380,7 @@ export default function RSVPPage() {
                 <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="heart-icon">
                     <path d="M10 17s-8-5-8-10a4 4 0 018 0 4 4 0 018 0c0 5-8 10-8 10z" fill="rgba(180,140,100,0.4)" />
                 </svg>
-                שירה &amp; גדליה · 3 בספטמבר 2026
+                שירה &amp; גדליה · 28 בדצמבר 2026
                 <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="heart-icon">
                     <path d="M10 17s-8-5-8-10a4 4 0 018 0 4 4 0 018 0c0 5-8 10-8 10z" fill="rgba(180,140,100,0.4)" />
                 </svg>

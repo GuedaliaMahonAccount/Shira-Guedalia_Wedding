@@ -295,9 +295,9 @@ export default function AdminDashboard() {
     const totalGuests = stats.totalGuests || 0;
     const attending = stats.attending || 0;
     const notAttending = stats.notAttending || 0;
-    const chuppahOnly = stats.chuppahOnly || 0;
-    const dancingOnly = stats.dancingOnly || 0;
-    const both = stats.both || 0;
+    const chuppahCount = stats.chuppahCount || 0;
+    const mealCount = stats.mealCount || 0;
+    const danceCount = stats.danceCount || 0;
     const pending = totalInvitations > 0 ? Math.max(0, totalInvitations - totalResponses) : null;
     const pendingPct = totalInvitations > 0 ? Math.round((pending / totalInvitations) * 100) : 0;
 
@@ -318,7 +318,7 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                             <h1 className="dash-title">לוח בקרה</h1>
-                            <p className="dash-sub">שירה &amp; גדליה · 3 בספטמבר 2026</p>
+                            <p className="dash-sub">שירה &amp; גדליה · 28 בדצמבר 2026</p>
                         </div>
                     </div>
                     <button onClick={() => setIsAuthenticated(false)} className="logout-btn">
@@ -363,14 +363,14 @@ export default function AdminDashboard() {
                             <span className="chart-card-badge">{totalGuests} אורחים</span>
                         </div>
                         <div className="radials-wrap">
-                            <RadialRing value={both} max={totalGuests} label="חופה וריקודים" color="#B48C64" delay={0} />
-                            <RadialRing value={chuppahOnly} max={totalGuests} label="חופה בלבד" color="#C9A87C" delay={100} />
-                            <RadialRing value={dancingOnly} max={totalGuests} label="ריקודים בלבד" color="#8A9E8C" delay={200} />
+                            <RadialRing value={chuppahCount} max={totalGuests} label="חופה" color="#B48C64" delay={0} />
+                            <RadialRing value={mealCount} max={totalGuests} label="לשבת לאכול" color="#C9A87C" delay={100} />
+                            <RadialRing value={danceCount} max={totalGuests} label="ריקודים" color="#8A9E8C" delay={200} />
                         </div>
                         <div className="event-bars">
-                            <HBar label="חופה וריקודים" value={both} max={totalGuests} color="linear-gradient(90deg, #B48C64, #D4B896)" />
-                            <HBar label="חופה בלבד" value={chuppahOnly} max={totalGuests} color="linear-gradient(90deg, #C9A87C, #E8D5BC)" />
-                            <HBar label="ריקודים בלבד" value={dancingOnly} max={totalGuests} color="linear-gradient(90deg, #8A9E8C, #B5C8B7)" />
+                            <HBar label="חופה" value={chuppahCount} max={totalGuests} color="linear-gradient(90deg, #B48C64, #D4B896)" />
+                            <HBar label="לשבת לאכול" value={mealCount} max={totalGuests} color="linear-gradient(90deg, #C9A87C, #E8D5BC)" />
+                            <HBar label="ריקודים" value={danceCount} max={totalGuests} color="linear-gradient(90deg, #8A9E8C, #B5C8B7)" />
                         </div>
                     </div>
 
@@ -486,6 +486,7 @@ export default function AdminDashboard() {
                                                             ? rsvp.guests.map(g => {
                                                                 let t = [];
                                                                 if (g.chuppah) t.push("חופה");
+                                                                if (g.meal) t.push("אוכל");
                                                                 if (g.dance) t.push("ריקודים");
                                                                 return t.join("+");
                                                             }).join(", ")

@@ -32,9 +32,9 @@ export async function fetchStats(passcode) {
             totalResponses: rawRsvps.length,
             attending: 0,
             notAttending: 0,
-            chuppahOnly: 0,
-            dancingOnly: 0,
-            both: 0,
+            chuppahCount: 0,
+            mealCount: 0,
+            danceCount: 0,
             totalGuests: 0
         };
 
@@ -45,14 +45,19 @@ export async function fetchStats(passcode) {
 
                 if (rsvp.guests && Array.isArray(rsvp.guests) && rsvp.guests.length > 0) {
                     rsvp.guests.forEach(g => {
-                        if (g.chuppah && !g.dance) stats.chuppahOnly += 1;
-                        else if (!g.chuppah && g.dance) stats.dancingOnly += 1;
-                        else if (g.chuppah && g.dance) stats.both += 1;
+                        if (g.chuppah) stats.chuppahCount += 1;
+                        if (g.meal) stats.mealCount += 1;
+                        if (g.dance) stats.danceCount += 1;
                     });
                 } else {
-                    if (rsvp.attendance_type === "חופה") stats.chuppahOnly += rsvp.guest_count;
-                    else if (rsvp.attendance_type === "ריקודים") stats.dancingOnly += rsvp.guest_count;
-                    else if (rsvp.attendance_type === "שניהם") stats.both += rsvp.guest_count;
+                    // Fallback for older data or if no guest-specific info
+                    if (rsvp.attendance_type === "חופה") stats.chuppahCount += rsvp.guest_count;
+                    else if (rsvp.attendance_type === "ריקודים") stats.danceCount += rsvp.guest_count;
+                    else if (rsvp.attendance_type === "שניהם") {
+                        stats.chuppahCount += rsvp.guest_count;
+                        stats.danceCount += rsvp.guest_count;
+                        stats.mealCount += rsvp.guest_count; // Assume both meant full event in old data
+                    }
                 }
             } else {
                 stats.notAttending += 1;
@@ -97,9 +102,16 @@ export async function exportGuestsData(passcode, exportType = "all") {
         const rows = docs.map(doc => {
             const isAttendingText = doc.is_attending === 1 ? "יגיע" : "לא יגיע";
             let comments = doc.reason || "";
-            // Optionally, add guest names to notes
+            // Optionally, add guest names and their events to notes
             if (doc.guests && doc.guests.length > 0) {
-                 const guestList = doc.guests.map(g => g.name || "אורח").join(", ");
+                 const guestList = doc.guests.map(g => {
+                     let events = [];
+                     if (g.chuppah) events.push("חופה");
+                     if (g.meal) events.push("אוכל");
+                     if (g.dance) events.push("ריקודים");
+                     const eventStr = events.length > 0 ? ` (${events.join("+")})` : " (ללא)";
+                     return (g.name || "אורח") + eventStr;
+                 }).join(", ");
                  comments += comments ? ` | מגיעים: ${guestList}` : `מגיעים: ${guestList}`;
             }
 

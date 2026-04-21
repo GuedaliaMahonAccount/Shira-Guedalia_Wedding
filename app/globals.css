@@ -57,13 +57,14 @@ body {
 
 .wedding-home {
   min-height: 100vh;
+  min-height: 100svh;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem 1.25rem 5rem;
-  overflow: hidden;
+  padding: clamp(1.5rem, 5vh, 4rem) clamp(1rem, 5vw, 2rem);
+  overflow-x: hidden;
   background: radial-gradient(ellipse at 70% 20%, #F5EBD8 0%, transparent 55%),
               radial-gradient(ellipse at 15% 80%, #EDE0D0 0%, transparent 50%),
               linear-gradient(160deg, #FAF7F2 0%, #F4ECE0 50%, #F8F3EA 100%);
@@ -121,20 +122,20 @@ body {
 /* Corner florals */
 .corner-floral {
   position: absolute;
-  width: 180px;
-  height: 180px;
+  width: clamp(120px, 25vw, 220px);
+  height: clamp(120px, 25vw, 220px);
   pointer-events: none;
 }
 
 .corner-floral.top-left {
-  top: -10px;
-  left: -10px;
+  top: -5%;
+  left: -5%;
   transform: rotate(0deg);
 }
 
 .corner-floral.bottom-right {
-  bottom: -10px;
-  right: -10px;
+  bottom: -5%;
+  right: -5%;
   transform: rotate(180deg);
 }
 
@@ -149,7 +150,7 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(200, 170, 130, 0.25);
   border-radius: var(--radius-card);
-  padding: 3rem 2.5rem;
+  padding: clamp(2rem, 8vw, 3.5rem) clamp(1.25rem, 6vw, 3.5rem);
   box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255,255,255,0.8);
   text-align: center;
   animation: card-appear 1.2s cubic-bezier(0.23, 1, 0.32, 1) both;
@@ -207,7 +208,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
+  gap: clamp(0.75rem, 4vw, 2rem);
   margin-bottom: 2rem;
   animation: fade-in-up 0.8s 0.35s both;
 }
@@ -224,10 +225,25 @@ body {
 .name-bride { color: var(--warm-brown); }
 .name-groom { color: var(--warm-brown); }
 
+.name-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.family-name {
+  font-family: var(--font-hebrew-serif);
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  color: var(--text-light);
+  font-weight: 300;
+  margin-top: -0.3rem;
+  letter-spacing: 0.05em;
+}
+
 .ampersand-wrap {
   flex-shrink: 0;
-  width: 40px;
-  height: 55px;
+  width: clamp(30px, 8vw, 50px);
+  height: clamp(40px, 10vw, 65px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -319,6 +335,16 @@ body {
   margin-top: 0.2rem;
 }
 
+.dress-code {
+  font-family: var(--font-hebrew-serif);
+  font-size: 0.9rem;
+  color: var(--gold);
+  font-weight: 400;
+  margin-top: 1rem;
+  font-style: italic;
+  opacity: 0.9;
+}
+
 /* ---- RSVP Button ---- */
 .rsvp-wrap {
   animation: fade-in-up 0.8s 0.9s both;
@@ -377,17 +403,17 @@ body {
 
 /* ---- Footer ---- */
 .wedding-footer {
-  position: absolute;
-  bottom: 1.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
+  width: 100%;
+  max-width: 520px;
+  margin-top: 2rem;
+  padding-bottom: 1.5rem;
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: clamp(0.75rem, 3vw, 0.85rem);
   color: var(--text-light);
   opacity: 0.7;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   z-index: 5;
 }
@@ -416,13 +442,14 @@ body {
 
 .rsvp-page {
   min-height: 100vh;
+  min-height: 100svh;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 2rem 1.25rem 5rem;
-  overflow: hidden;
+  padding: clamp(1.5rem, 5vh, 4rem) clamp(1rem, 5vw, 2rem);
+  overflow-x: hidden;
   background: radial-gradient(ellipse at 80% 10%, #F5EBD8 0%, transparent 50%),
               radial-gradient(ellipse at 10% 90%, #EDE0D0 0%, transparent 50%),
               linear-gradient(160deg, #FAF7F2 0%, #F4ECE0 100%);
@@ -438,7 +465,7 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(200, 170, 130, 0.25);
   border-radius: var(--radius-card);
-  padding: 2.5rem 2rem;
+  padding: clamp(1.5rem, 5vw, 3rem) clamp(1rem, 4vw, 2.75rem);
   box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255,255,255,0.8);
   animation: card-appear 0.9s cubic-bezier(0.23, 1, 0.32, 1) both;
 }
@@ -998,19 +1025,52 @@ body {
 
 /* ---- RSVP Footer ---- */
 .rsvp-footer {
-  margin-top: 1.5rem;
+  margin: 2rem 0;
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: clamp(0.7rem, 2.5vw, 0.8rem);
   color: var(--text-light);
   opacity: 0.6;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   z-index: 5;
 }
 
+.side-choice {
+  display: flex;
+  gap: clamp(1rem, 5vw, 2rem);
+  margin-top: 0.5rem;
+}
+
+.side-choice label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(180, 140, 100, 0.05);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.side-choice label:has(input:checked) {
+  background: rgba(180, 140, 100, 0.15);
+  border-color: rgba(180, 140, 100, 0.3);
+}
+
+.side-choice input {
+  accent-color: var(--gold);
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
 /* ======================================================
-   RESPONSIVE
+   RESPONSIVE REFINEMENTS
    ====================================================== */
 
 @media (min-width: 480px) {
@@ -1026,45 +1086,66 @@ body {
     flex-direction: row;
     justify-content: center;
   }
-
-  .corner-floral {
-    width: 220px;
-    height: 220px;
-  }
 }
 
-@media (min-width: 640px) {
-  .invitation-card {
-    padding: 3.5rem 3.5rem;
-  }
-
-  .rsvp-card {
-    padding: 3rem 2.75rem;
-  }
-
+@media (max-width: 400px) {
   .name {
-    font-size: 5.5rem;
+    font-size: clamp(2.8rem, 15vw, 4rem);
+  }
+  
+  .family-name {
+    font-size: 0.9rem;
+  }
+
+  .date-display {
+    gap: 0.4rem;
   }
 }
 
-@media (max-width: 380px) {
+@media (min-width: 1024px) {
   .invitation-card {
-    padding: 2rem 1.5rem;
-    border-radius: 1.75rem;
+    max-width: 580px;
   }
-
-  .names-section {
-    gap: 0.75rem;
+  
+  .name {
+    font-size: 6rem;
   }
+}
 
-  .corner-floral {
-    width: 120px;
-    height: 120px;
-  }
-
-  .rsvp-card {
+/* Landscape/Short screen fix */
+@media (max-height: 700px) and (min-width: 640px) {
+  .wedding-home {
     padding: 2rem 1.25rem;
-    border-radius: 1.75rem;
+  }
+  
+  .invitation-card {
+    padding: 2rem 3.5rem;
+  }
+  
+  .ornament-top, .ornament-bottom {
+    display: none;
+  }
+}
+
+@media (max-height: 660px) and (max-width: 640px) {
+  .wedding-home, .rsvp-page {
+    padding: 1rem;
+    justify-content: flex-start;
+    overflow-y: auto;
+  }
+  
+  .invitation-card, .rsvp-card {
+    padding: 1.5rem 1.25rem;
+    margin: 1rem 0;
+    border-radius: 1.5rem;
+  }
+  
+  .ornament-top, .ornament-bottom, .rsvp-ornament {
+    display: none;
+  }
+  
+  .names-section {
+    margin-bottom: 1rem;
   }
 }
 
