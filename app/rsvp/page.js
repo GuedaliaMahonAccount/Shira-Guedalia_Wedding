@@ -2,9 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { submitRSVP } from "../actions";
 
-export default function RSVPPage() {
+function RSVPContent() {
+    const searchParams = useSearchParams();
+    const fromId = searchParams.get("from");
+    const backHref = fromId ? (fromId === "1" ? "/" : `/${fromId}`) : "/";
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [result, setResult] = useState(null);
     const [isAttending, setIsAttending] = useState(null);
@@ -112,7 +118,7 @@ export default function RSVPPage() {
             <div className="rsvp-card">
                 {/* Header */}
                 <div className="rsvp-header">
-                    <Link href="/" className="back-link">
+                    <Link href={backHref} className="back-link">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M19 12H5M12 5l7 7-7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
@@ -291,11 +297,11 @@ export default function RSVPPage() {
                                 <div className="field-group">
                                     <label className="field-label">מאיזה צד אתם מגיעים? (לא חובה)</label>
                                     <div className="side-choice" style={{ display: 'flex', gap: '1.5rem', marginTop: '0.4rem' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-dark)' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-mid)' }}>
                                             <input type="radio" value="חתן" name="sideChoice" checked={side === 'חתן'} onChange={(e) => setSide(e.target.value)} />
                                             <span>החתן</span>
                                         </label>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-dark)' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-mid)' }}>
                                             <input type="radio" value="כלה" name="sideChoice" checked={side === 'כלה'} onChange={(e) => setSide(e.target.value)} />
                                             <span>הכלה</span>
                                         </label>
@@ -317,7 +323,7 @@ export default function RSVPPage() {
                             <div className="form-section">
                                 <div className="form-section-header">
                                     <div className="form-section-emoji">🌸</div>
-                                    <h3 className="form-section-title">חבל... אולי בפעם הבאה</h3>
+                                    <h3 className="form-section-title">חבל...</h3>
                                     <button type="button" onClick={() => { setIsAttending(null); setForceUpdateId(null); }} className="change-mind-link">
                                         שנייה, התחרטתי / טעות
                                     </button>
@@ -381,5 +387,13 @@ export default function RSVPPage() {
                 </svg>
             </footer>
         </main>
+    );
+}
+
+export default function RSVPPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <RSVPContent />
+        </Suspense>
     );
 }
