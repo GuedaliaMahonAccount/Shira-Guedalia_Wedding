@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "החתונה של שירה וגדליה",
-  description: "הזמנה לחתונה של שירה וגדליה - 28 בדצמבר 2026",
+  description: "הזמנה לחתונה של שירה וגדליה - 29 באוקטובר 2026",
 };
 
 export default function RootLayout({

@@ -108,9 +108,9 @@ export default function Invitation({ photoId }: InvitationProps) {
             <circle cx="60" cy="60" r="36" fill="none" stroke="rgba(255,220,150,0.25)" strokeWidth="0.6"/>
           </svg>
           <div className="stamp-inner" dir="ltr">
-            <span className="stamp-date-num">28</span>
+            <span className="stamp-date-num">29</span>
             <span className="stamp-date-dot">.</span>
-            <span className="stamp-date-num">12</span>
+            <span className="stamp-date-num">10</span>
             <span className="stamp-date-dot">.</span>
             <span className="stamp-date-num">26</span>
           </div>
@@ -143,9 +143,9 @@ export default function Invitation({ photoId }: InvitationProps) {
               <circle cx="60" cy="60" r="36" fill="none" stroke="rgba(255,220,150,0.25)" strokeWidth="0.6"/>
             </svg>
             <div className="stamp-inner" dir="ltr">
-              <span className="stamp-date-num">28</span>
+              <span className="stamp-date-num">29</span>
               <span className="stamp-date-dot">.</span>
-              <span className="stamp-date-num">12</span>
+              <span className="stamp-date-num">10</span>
               <span className="stamp-date-dot">.</span>
               <span className="stamp-date-num">26</span>
             </div>
@@ -194,8 +194,8 @@ export default function Invitation({ photoId }: InvitationProps) {
                 </svg>
               </div>
               <span className="info-tile-label">תאריך</span>
-              <span className="info-tile-value">י״ח בטבת</span>
-              <span className="info-tile-sub">תשפ״ז · 28.12.2026</span>
+              <span className="info-tile-value">י״ח בחשוון</span>
+              <span className="info-tile-sub">תשפ״ז · 29.10.2026</span>
             </div>
 
             <div className="info-tile">
@@ -207,9 +207,9 @@ export default function Invitation({ photoId }: InvitationProps) {
                 </svg>
               </div>
               <span className="info-tile-label">מיקום</span>
-              <span className="info-tile-value">Vigo, Kiryat Ekron</span>
-              <span className="info-tile-sub">Bussy Saint Georges St 9</span>
-              <span className="info-tile-sub" style={{ marginTop: '0.2rem', fontWeight: 500 }}>חופה בשעה 18:00</span>
+              <span className="info-tile-value">Leonardo, Ashdod</span>
+              <span className="info-tile-sub">HaYam HaTichon Blvd 1</span>
+              <span className="info-tile-sub" style={{ marginTop: '0.2rem', fontWeight: 500 }}>קבלת פנים בשעה 18:30 · חופה בשעה 19:30</span>
             </div>
           </div>
 

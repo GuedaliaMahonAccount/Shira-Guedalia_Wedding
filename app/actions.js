@@ -59,7 +59,7 @@ export async function submitRSVP(data) {
                         if (existingRsvp.guests && existingRsvp.guests.length === guests.length) {
                             isIdentical = existingRsvp.guests.every((eg, i) => {
                                 const ng = guests[i];
-                                return eg.name === ng.name && eg.chuppah === ng.chuppah && eg.meal === ng.meal && eg.dance === ng.dance;
+                                return eg.name === ng.name && eg.chuppah === ng.chuppah && eg.dance === ng.dance && (eg.eat !== false) === (ng.eat !== false);
                             });
                         }
                     } else {
