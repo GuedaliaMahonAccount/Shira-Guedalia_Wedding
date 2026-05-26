@@ -318,7 +318,7 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                             <h1 className="dash-title">לוח בקרה</h1>
-                            <p className="dash-sub">שירה &amp; גדליה · 3 בספטמבר 2026</p>
+                            <p className="dash-sub">שירה &amp; גדליה · 29 באוקטובר 2026</p>
                         </div>
                     </div>
                     <button onClick={() => setIsAuthenticated(false)} className="logout-btn">

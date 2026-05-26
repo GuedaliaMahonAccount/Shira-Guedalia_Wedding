@@ -381,7 +381,7 @@ function RSVPContent() {
                 <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="heart-icon">
                     <path d="M10 17s-8-5-8-10a4 4 0 018 0 4 4 0 018 0c0 5-8 10-8 10z" fill="rgba(180,140,100,0.4)" />
                 </svg>
-                שירה &amp; גדליה · 3 בספטמבר 2026
+                שירה &amp; גדליה · 29 באוקטובר 2026
                 <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="heart-icon">
                     <path d="M10 17s-8-5-8-10a4 4 0 018 0 4 4 0 018 0c0 5-8 10-8 10z" fill="rgba(180,140,100,0.4)" />
                 </svg>
