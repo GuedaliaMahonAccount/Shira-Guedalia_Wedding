@@ -32,10 +32,10 @@ export async function fetchStats(passcode) {
             totalResponses: rawRsvps.length,
             attending: 0,
             notAttending: 0,
-            chuppahOnly: 0,
-            dancingOnly: 0,
-            both: 0,
-            totalGuests: 0
+            totalGuests: 0,
+            totalChuppah: 0,
+            totalEat: 0,
+            totalDance: 0
         };
 
         rawRsvps.forEach(rsvp => {
@@ -45,14 +45,21 @@ export async function fetchStats(passcode) {
 
                 if (rsvp.guests && Array.isArray(rsvp.guests) && rsvp.guests.length > 0) {
                     rsvp.guests.forEach(g => {
-                        if (g.chuppah && !g.dance) stats.chuppahOnly += 1;
-                        else if (!g.chuppah && g.dance) stats.dancingOnly += 1;
-                        else if (g.chuppah && g.dance) stats.both += 1;
+                        if (g.chuppah) stats.totalChuppah += 1;
+                        if (g.eat !== false) stats.totalEat += 1;
+                        if (g.dance) stats.totalDance += 1;
                     });
                 } else {
-                    if (rsvp.attendance_type === "חופה") stats.chuppahOnly += rsvp.guest_count;
-                    else if (rsvp.attendance_type === "ריקודים") stats.dancingOnly += rsvp.guest_count;
-                    else if (rsvp.attendance_type === "שניהם") stats.both += rsvp.guest_count;
+                    if (rsvp.attendance_type === "חופה") {
+                        stats.totalChuppah += rsvp.guest_count;
+                        stats.totalEat += rsvp.guest_count; // Assumption for old data
+                    } else if (rsvp.attendance_type === "ריקודים") {
+                        stats.totalDance += rsvp.guest_count;
+                    } else {
+                        stats.totalChuppah += rsvp.guest_count;
+                        stats.totalEat += rsvp.guest_count;
+                        stats.totalDance += rsvp.guest_count;
+                    }
                 }
             } else {
                 stats.notAttending += 1;
@@ -99,7 +106,14 @@ export async function exportGuestsData(passcode, exportType = "all") {
             let comments = doc.reason || "";
             // Optionally, add guest names to notes
             if (doc.guests && doc.guests.length > 0) {
-                 const guestList = doc.guests.map(g => g.name || "אורח").join(", ");
+                 const guestList = doc.guests.map(g => {
+                     let events = [];
+                     if (g.chuppah) events.push("חופה");
+                     if (g.eat !== false) events.push("אוכל");
+                     if (g.dance) events.push("ריקודים");
+                     const evStr = events.length > 0 ? ` (${events.join('+')})` : "";
+                     return `${g.name || "אורח"}${evStr}`;
+                 }).join(", ");
                  comments += comments ? ` | מגיעים: ${guestList}` : `מגיעים: ${guestList}`;
             }
 

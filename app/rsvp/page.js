@@ -26,7 +26,7 @@ function RSVPContent() {
     }, []);
 
     const [guestCount, setGuestCount] = useState(1);
-    const [guests, setGuests] = useState([{ name: "", chuppah: true, dance: true }]);
+    const [guests, setGuests] = useState([{ name: "", chuppah: true, dance: true, eat: true }]);
     const [phone, setPhone] = useState("");
     const [noGuests, setNoGuests] = useState([{ name: "" }]);
     const [noGuestCount, setNoGuestCount] = useState(1);
@@ -41,7 +41,7 @@ function RSVPContent() {
         setGuests(prev => {
             const next = [...prev];
             if (count > prev.length) {
-                for (let i = prev.length; i < count; i++) next.push({ name: "", chuppah: true, dance: true });
+                for (let i = prev.length; i < count; i++) next.push({ name: "", chuppah: true, dance: true, eat: true });
             } else {
                 next.splice(count);
             }
@@ -163,6 +163,28 @@ function RSVPContent() {
                     </div>
                 )}
 
+                {/* Success Actions */}
+                {result?.type === 'success' && (
+                    <div className="success-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem', marginBottom: '1.5rem' }}>
+                        <a href="https://waze.com/ul?q=Leonardo+Hotel+Ashdod&navigate=yes" target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '1.4rem', height: '1.4rem' }}>
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="currentColor" strokeWidth="1.5"/>
+                                <circle cx="12" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+                            </svg>
+                            ניווט לאולם ב-Waze
+                        </a>
+                        <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=החתונה+של+שירה+וגדליה&dates=20261029T163000Z/20261029T210000Z&details=קבלת+פנים+בשעה+18:30,+חופה+בשעה+19:30&location=Leonardo+Hotel,+HaYam+HaTichon+Blvd+1,+Ashdod" target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '1.4rem', height: '1.4rem' }}>
+                                <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                                <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="1.5"/>
+                                <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="1.5"/>
+                                <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="1.5"/>
+                            </svg>
+                            הוספה ליומן Google
+                        </a>
+                    </div>
+                )}
+
                 {/* Attending choice buttons */}
                 {result?.type !== 'success' && isAttending === null && !existingRsvpToConfirm && (
                     <div className="attend-choice">
@@ -204,7 +226,7 @@ function RSVPContent() {
                                     setIsAttending(existingRsvpToConfirm.is_attending === 1 ? 'yes' : 'no');
                                     if (existingRsvpToConfirm.is_attending === 1) {
                                         setGuestCount(existingRsvpToConfirm.guest_count);
-                                        setGuests(existingRsvpToConfirm.guests?.length > 0 ? existingRsvpToConfirm.guests : [{ name: "", chuppah: true, dance: true }]);
+                                        setGuests(existingRsvpToConfirm.guests?.length > 0 ? existingRsvpToConfirm.guests : [{ name: "", chuppah: true, dance: true, eat: true }]);
                                     } else {
                                         setNoGuestCount(existingRsvpToConfirm.guest_count);
                                         if (existingRsvpToConfirm.guests?.length > 0) {
@@ -278,11 +300,16 @@ function RSVPContent() {
                                                     placeholder="שם האורח/ת"
                                                 />
                                             </div>
-                                            <div className="guest-events">
+                                            <div className="guest-events" style={{ flexWrap: 'wrap' }}>
                                                 <label className="event-check">
                                                     <input type="checkbox" checked={guest.chuppah} onChange={(e) => handleGuestChange(idx, "chuppah", e.target.checked)} className="checkbox" />
                                                     <span className="checkmark"></span>
                                                     <span>חופה</span>
+                                                </label>
+                                                <label className="event-check">
+                                                    <input type="checkbox" checked={guest.eat !== false} onChange={(e) => handleGuestChange(idx, "eat", e.target.checked)} className="checkbox" />
+                                                    <span className="checkmark"></span>
+                                                    <span>לשבת לאכול</span>
                                                 </label>
                                                 <label className="event-check">
                                                     <input type="checkbox" checked={guest.dance} onChange={(e) => handleGuestChange(idx, "dance", e.target.checked)} className="checkbox" />
