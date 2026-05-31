@@ -166,7 +166,7 @@ export default function Invitation({ photoId }: InvitationProps) {
             <span className="name name-groom">גדליה</span>
           </section>
 
-          <p className="with-joy">אני שמחים להזמינכם</p>
+          <p className="with-joy">אנחנו שמחים להזמינכם</p>
 
           {/* Ornament */}
           <div className="golden-line" aria-hidden="true">
