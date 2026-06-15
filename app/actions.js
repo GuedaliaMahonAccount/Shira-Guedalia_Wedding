@@ -130,3 +130,50 @@ export async function submitRSVP(data) {
         return { error: "שגיאה בשמירת הנתונים. אנא נסו שוב." };
     }
 }
+
+export async function submitGift(data) {
+    if (!data || !data.gift || !data.gift.trim()) {
+        return { error: "חובה לציין את תיאור המתנה" };
+    }
+
+    try {
+        const client = await clientPromise;
+        const db = client.db("wedding");
+
+        await db.collection("gifts").insertOne({
+            name: data.name ? data.name.trim() : "",
+            gift: data.gift.trim(),
+            created_at: new Date()
+        });
+
+        revalidatePath("/gifts");
+        revalidatePath("/admin");
+        return { success: true, message: "המתנה נרשמה בהצלחה, תודה רבה!" };
+    } catch (error) {
+        console.error("Failed to save gift", error);
+        return { error: "שגיאה בשמירת המתנה. אנא נסו שוב." };
+    }
+}
+
+export async function fetchPublicGifts() {
+    try {
+        const client = await clientPromise;
+        const db = client.db("wedding");
+
+        const docs = await db.collection("gifts").find().sort({ created_at: -1 }).toArray();
+        
+        // Return only the gift description and date (omit name for total public anonymity)
+        return {
+            success: true,
+            gifts: docs.map(doc => ({
+                id: doc._id.toString(),
+                gift: doc.gift,
+                created_at: doc.created_at ? doc.created_at.toISOString() : null
+            }))
+        };
+    } catch (error) {
+        console.error("Failed to fetch public gifts", error);
+        return { error: "שגיאה בטעינת רשימת המתנות" };
+    }
+}
+
