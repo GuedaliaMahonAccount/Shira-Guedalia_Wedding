@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { fetchStats, exportGuestsData, deleteRsvp } from "./actions";
+import { fetchStats, exportGuestsData, deleteRsvp, fetchGiftsAdmin, deleteGiftAdmin } from "./actions";
 
 // ── Animated counter hook ────────────────────────────────────────
 function useCountUp(target, duration = 1200, started = false) {
@@ -198,12 +198,27 @@ export default function AdminDashboard() {
     const [showTable, setShowTable] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
 
+    // Gift States
+    const [gifts, setGifts] = useState([]);
+    const [showGiftsTable, setShowGiftsTable] = useState(false);
+    const [revealAllNames, setRevealAllNames] = useState(false);
+    const [revealedNames, setRevealedNames] = useState({});
+
     const handleLogin = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
         setError(null);
         const res = await fetchStats(passcode);
-        if (res.error) { setError(res.error); }
-        else { setData(res); setIsAuthenticated(true); }
+        if (res.error) { 
+            setError(res.error); 
+        } else { 
+            setData(res); 
+            // Also fetch gifts
+            const giftsRes = await fetchGiftsAdmin(passcode);
+            if (giftsRes.success) {
+                setGifts(giftsRes.gifts);
+            }
+            setIsAuthenticated(true); 
+        }
     };
 
     const handleExport = async (type) => {
@@ -244,6 +259,22 @@ export default function AdminDashboard() {
             handleLogin(); // refresh table
         }
     };
+
+    const handleDeleteGift = async (id, giftDesc) => {
+        if (!window.confirm(`האם אתה בטוח שברצונך למחוק את המתנה "${giftDesc}"?`)) return;
+
+        const res = await deleteGiftAdmin(passcode, id);
+        if (res.error) {
+            alert(res.error);
+        } else {
+            // Re-fetch gifts list
+            const giftsRes = await fetchGiftsAdmin(passcode);
+            if (giftsRes.success) {
+                setGifts(giftsRes.gifts);
+            }
+        }
+    };
+
 
     // ── Login Screen ─────────────────────────────────────────────
     if (!isAuthenticated) {
@@ -503,6 +534,92 @@ export default function AdminDashboard() {
                                         {data.rsvps.length === 0 && (
                                             <tr>
                                                 <td colSpan="7" className="td-empty">אין עדיין תגובות...</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </section>
+
+                {/* ── Gifts Table Section ── */}
+                <section className="table-section" style={{ marginTop: '1rem' }}>
+                    <div className="table-header">
+                        <div>
+                            <h2 className="table-title">רשימת מתנות שנבחרו</h2>
+                            <p className="table-sub">{gifts.length} מתנות רשומות</p>
+                        </div>
+                        <div className="table-actions" style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {gifts.length > 0 && (
+                                <button 
+                                    className="table-toggle" 
+                                    onClick={() => setRevealAllNames(!revealAllNames)}
+                                    style={{ background: 'rgba(212,184,150,0.15)', border: '1px solid rgba(180,140,100,0.3)', color: 'var(--text-dark)' }}
+                                >
+                                    {revealAllNames ? "הסתר שמות (אנונימי)" : "הצג את כל השמות"}
+                                </button>
+                            )}
+                            <button className="table-toggle" onClick={() => setShowGiftsTable(t => !t)}>
+                                {showGiftsTable ? "הסתר טבלה" : "הצג טבלה"}
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                    style={{ transform: showGiftsTable ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>
+                                    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {showGiftsTable && (
+                        <div className="table-wrap">
+                            <div className="table-scroll">
+                                <table className="rsvp-table">
+                                    <thead>
+                                        <tr>
+                                            <th>מתנה</th>
+                                            <th>שם האורח/ת (אנונימי לקהל)</th>
+                                            <th>תאריך רישום</th>
+                                            <th>פעולות</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {gifts.map((gift) => {
+                                            const isRevealed = revealAllNames || revealedNames[gift.id];
+                                            const displayName = gift.name ? gift.name : "אורח אנונימי (לא ציין שם)";
+                                            return (
+                                                <tr key={gift.id}>
+                                                    <td className="td-name" style={{ color: 'var(--text-dark)' }}>{gift.gift}</td>
+                                                    <td>
+                                                        {!gift.name ? (
+                                                            <span className="td-muted" style={{ fontStyle: 'italic' }}>לא נכתב שם</span>
+                                                        ) : isRevealed ? (
+                                                            <span style={{ fontWeight: '600', color: 'var(--text-dark)' }}>{displayName}</span>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={() => setRevealedNames(prev => ({ ...prev, [gift.id]: true }))}
+                                                                className="delete-btn"
+                                                                style={{ 
+                                                                    background: 'rgba(180,140,100,0.1)', 
+                                                                    color: 'var(--gold-deep)', 
+                                                                    borderColor: 'rgba(180,140,100,0.3)',
+                                                                    padding: '0.2rem 0.5rem',
+                                                                    fontSize: '0.72rem'
+                                                                }}
+                                                            >
+                                                                👁 לחץ להצגת השם
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                    <td className="td-date">{new Date(gift.created_at).toLocaleDateString('he-IL')}</td>
+                                                    <td className="td-actions">
+                                                        <button onClick={() => handleDeleteGift(gift.id, gift.gift)} className="delete-btn">מחיקה</button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {gifts.length === 0 && (
+                                            <tr>
+                                                <td colSpan="4" className="td-empty">אין עדיין מתנות רשומות...</td>
                                             </tr>
                                         )}
                                     </tbody>

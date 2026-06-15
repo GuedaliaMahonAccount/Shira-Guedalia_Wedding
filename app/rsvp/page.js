@@ -198,6 +198,19 @@ function RSVPContent() {
                         </a>
                     </div>
                 )}
+                
+                {/* Gifts List navigation */}
+                {((result?.type === 'success') || (hasAlreadyResponded && isAttending === null && !result)) && !existingRsvpToConfirm && (
+                    <div className="gifts-navigation" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem', marginBottom: '1.5rem', width: '100%' }}>
+                        <Link href="/gifts" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: 'linear-gradient(135deg, var(--amber) 0%, var(--gold) 100%)' }}>
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '1.4rem', height: '1.4rem' }}>
+                                <path d="M20 12v8H4v-8M22 7H2v5h20V7zM12 7V2M12 7c-1.5-2-4-2-4 0s2.5 2 4 0zM12 7c1.5-2 4-2 4 0s-2.5 2-4 0z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            למעבר לרשימת המתנות
+                        </Link>
+                    </div>
+                )}
+
 
                 {/* Attending choice buttons */}
                 {result?.type !== 'success' && isAttending === null && !existingRsvpToConfirm && (

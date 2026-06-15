@@ -166,3 +166,45 @@ export async function deleteRsvp(passcode, id) {
         return { error: "שגיאה במחיקת הרשומה" };
     }
 }
+
+export async function fetchGiftsAdmin(passcode) {
+    if (passcode !== ADMIN_PASSCODE) {
+        return { error: "סיסמה שגויה" };
+    }
+
+    try {
+        const client = await clientPromise;
+        const db = client.db("wedding");
+
+        const docs = await db.collection("gifts").find().sort({ created_at: -1 }).toArray();
+        const gifts = docs.map(doc => ({
+            id: doc._id.toString(),
+            name: doc.name || "",
+            gift: doc.gift,
+            created_at: doc.created_at ? doc.created_at.toISOString() : null
+        }));
+
+        return { success: true, gifts };
+    } catch (error) {
+        console.error("Failed to fetch admin gifts", error);
+        return { error: "שגיאה בטעינת רשימת המתנות" };
+    }
+}
+
+export async function deleteGiftAdmin(passcode, id) {
+    if (passcode !== ADMIN_PASSCODE) {
+        return { error: "סיסמה שגויה" };
+    }
+
+    try {
+        const client = await clientPromise;
+        const db = client.db("wedding");
+
+        await db.collection("gifts").deleteOne({ _id: new ObjectId(id) });
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete gift", error);
+        return { error: "שגיאה במחיקת המתנה" };
+    }
+}
+
