@@ -17,11 +17,16 @@ function RSVPContent() {
     const [hasAlreadyResponded, setHasAlreadyResponded] = useState(false);
     const [existingRsvpToConfirm, setExistingRsvpToConfirm] = useState(null);
     const [forceUpdateId, setForceUpdateId] = useState(null);
+    const [confirmedAttending, setConfirmedAttending] = useState(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
             const responded = localStorage.getItem('rsvp_submitted');
-            if (responded === 'true') setHasAlreadyResponded(true);
+            if (responded === 'true') {
+                setHasAlreadyResponded(true);
+                const attending = localStorage.getItem('rsvp_attending');
+                setConfirmedAttending(attending);
+            }
         }
     }, []);
 
@@ -97,11 +102,14 @@ function RSVPContent() {
             setResult({ type: "error", message: response.error });
         } else {
             setResult({ type: "success", message: response?.message || "תודה רבה! אישור ההגעה נשמר בהצלחה." });
+            const attendingChoice = isAttending;
             setIsAttending(null);
             setForceUpdateId(null);
             if (typeof window !== "undefined") {
                 localStorage.setItem('rsvp_submitted', 'true');
+                localStorage.setItem('rsvp_attending', attendingChoice);
                 setHasAlreadyResponded(true);
+                setConfirmedAttending(attendingChoice);
             }
         }
         setIsSubmitting(false);
@@ -164,7 +172,7 @@ function RSVPContent() {
                 )}
 
                 {/* Success Actions */}
-                {result?.type === 'success' && (
+                {confirmedAttending === 'yes' && ((result?.type === 'success') || (hasAlreadyResponded && isAttending === null && !result)) && (
                     <div className="success-actions" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem', marginBottom: '1.5rem' }}>
                         <a href="https://waze.com/ul?q=Leonardo+Hotel+Ashdod&navigate=yes" target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
                             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '1.4rem', height: '1.4rem' }}>
@@ -181,6 +189,12 @@ function RSVPContent() {
                                 <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="1.5"/>
                             </svg>
                             הוספה ליומן Google
+                        </a>
+                        <a href="https://chat.whatsapp.com/CNRFr7HKzaj32qflvXsI7J?s=cl&p=i&mlu=2&ilr=0&amv=0" target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
+                            <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: '1.4rem', height: '1.4rem', color: '#25D366' }}>
+                                <path d="M12.012 2c-5.506 0-9.988 4.482-9.988 9.988 0 1.76.459 3.48 1.332 5.004L2 22l5.166-1.356c1.47.8 3.12 1.224 4.842 1.224 5.508 0 9.99-4.482 9.99-9.988C22 6.482 17.52 2 12.012 2zm6.246 14.376c-.258.726-1.296 1.326-1.788 1.386-.48.06-1.074.108-3.036-.702-2.508-1.032-4.122-3.576-4.248-3.744-.12-.168-1.014-1.344-1.014-2.568 0-1.224.636-1.83.864-2.076.228-.246.504-.306.672-.306.168 0 .342 0 .492.006.156.006.366-.06.57.45.21.516.714 1.74.774 1.866.06.126.102.27.018.438-.084.168-.168.27-.336.468-.168.198-.354.444-.504.594-.168.168-.342.348-.15.684.198.336.876 1.44 1.878 2.334 1.29 1.152 2.376 1.512 2.712 1.68.336.168.534.126.732-.102.198-.228.864-1.008 1.092-1.356.228-.348.456-.288.768-.174.312.114 1.974.93 2.31 1.098.336.168.558.252.642.396.084.144.084.828-.174 1.554z"/>
+                            </svg>
+                            קבוצת טרמפים ב-WhatsApp
                         </a>
                     </div>
                 )}
@@ -253,8 +267,15 @@ function RSVPContent() {
                                 onClick={() => {
                                     setExistingRsvpToConfirm(null);
                                     setIsAttending(null);
+                                    const attendingChoice = existingRsvpToConfirm.is_attending === 1 ? 'yes' : 'no';
                                     setResult({ type: "success", message: "מעולה, ההזמנה המקורית נשמרה. תודה רבה!" });
                                     setForceUpdateId(null);
+                                    if (typeof window !== "undefined") {
+                                        localStorage.setItem('rsvp_submitted', 'true');
+                                        localStorage.setItem('rsvp_attending', attendingChoice);
+                                        setHasAlreadyResponded(true);
+                                        setConfirmedAttending(attendingChoice);
+                                    }
                                 }}
                                 className="btn-secondary"
                             >

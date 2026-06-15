@@ -447,6 +447,70 @@ body {
   letter-spacing: 0.04em;
 }
 
+/* ── Date Specific Prominence ── */
+.info-tile-date .info-tile-value {
+  font-size: clamp(1.05rem, 3.8vw, 1.25rem);
+  font-weight: 500;
+  color: var(--gold-light);
+  text-shadow: 0 0 12px rgba(255, 240, 192, 0.2);
+}
+
+.info-tile-date .info-tile-sub {
+  font-size: clamp(0.78rem, 2.8vw, 0.88rem);
+  font-weight: 400;
+  color: var(--text-light);
+}
+
+/* ── Schedule Timing Outside Cards ── */
+.schedule-info {
+  font-family: var(--font-hebrew);
+  font-size: clamp(0.9rem, 3.2vw, 1.05rem);
+  font-weight: 400;
+  color: var(--gold-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.8rem;
+  background: rgba(255, 240, 195, 0.04);
+  border: 1px dashed rgba(247, 206, 80, 0.22);
+  border-radius: 2rem;
+  margin: 0.2rem 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.schedule-dot {
+  color: var(--amber);
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin: 0 0.1rem;
+}
+
+@media (max-width: 480px) {
+  .schedule-info {
+    flex-direction: column;
+    gap: 0.3rem;
+    border-radius: 1rem;
+    padding: 0.8rem 1.2rem;
+  }
+  .schedule-dot {
+    display: none;
+  }
+}
+
+/* ── Dress Code ── */
+.dress-code-note {
+  font-family: var(--font-hebrew);
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--text-faint);
+  opacity: 0.85;
+  margin-top: 0.8rem;
+  text-align: center;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
 /* ── Blessing quote ── */
 .blessing-box {
   position: relative;

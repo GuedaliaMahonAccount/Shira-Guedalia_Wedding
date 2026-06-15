@@ -184,7 +184,7 @@ export default function Invitation({ photoId }: InvitationProps) {
 
           {/* Info tiles */}
           <div className="info-tiles">
-            <div className="info-tile">
+            <div className="info-tile info-tile-date">
               <div className="info-tile-icon">
                 <svg viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" strokeWidth="1.3"/>
@@ -195,7 +195,7 @@ export default function Invitation({ photoId }: InvitationProps) {
               </div>
               <span className="info-tile-label">תאריך</span>
               <span className="info-tile-value">י״ח בחשוון</span>
-              <span className="info-tile-sub">תשפ״ז · 29.10.2026</span>
+              <span className="info-tile-sub">29.10.2026</span>
             </div>
 
             <div className="info-tile">
@@ -209,8 +209,14 @@ export default function Invitation({ photoId }: InvitationProps) {
               <span className="info-tile-label">מיקום</span>
               <span className="info-tile-value">Leonardo, Ashdod</span>
               <span className="info-tile-sub">HaYam HaTichon Blvd 1</span>
-              <span className="info-tile-sub" style={{ marginTop: '0.2rem', fontWeight: 500 }}>קבלת פנים בשעה 18:30 · חופה בשעה 19:30</span>
             </div>
+          </div>
+
+          {/* Schedule timing */}
+          <div className="schedule-info">
+            <span>קבלת פנים בשעה 18:30</span>
+            <span className="schedule-dot">&middot;</span>
+            <span>חופה בשעה 19:30</span>
           </div>
 
           {/* Blessing quote */}
@@ -233,6 +239,8 @@ export default function Invitation({ photoId }: InvitationProps) {
             </svg>
             אישור הגעה
           </Link>
+
+          <p className="dress-code-note">לבוש צנוע הולם את האירוע</p>
 
           <p className="footer-note">נשמח לראותכם ביום שמחתנו ♡</p>
           
