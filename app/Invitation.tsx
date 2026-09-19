@@ -214,9 +214,9 @@ export default function Invitation({ photoId }: InvitationProps) {
 
           {/* Schedule timing */}
           <div className="schedule-info">
-            <span>קבלת פנים בשעה 18:30</span>
+            <span>קבלת פנים 19:00</span>
             <span className="schedule-dot">&middot;</span>
-            <span>חופה בשעה 19:30</span>
+            <span>חופה 19:30</span>
           </div>
 
           {/* Blessing quote */}

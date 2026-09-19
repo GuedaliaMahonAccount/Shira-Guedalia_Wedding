@@ -3,6 +3,7 @@
 import clientPromise from "../lib/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { sendTelegramNotification, formatRSVPNotification } from "../lib/telegram";
 
 import { ObjectId } from "mongodb";
 
@@ -92,7 +93,9 @@ export async function submitRSVP(data) {
             }
         }
 
-        if (data.forceUpdateId) {
+        const isUpdate = !!data.forceUpdateId;
+
+        if (isUpdate) {
             await db.collection("rsvps").updateOne(
                 { _id: new ObjectId(data.forceUpdateId) },
                 {
@@ -122,6 +125,19 @@ export async function submitRSVP(data) {
                 created_at: new Date()
             });
         }
+
+        // Send Telegram notification (fire-and-forget, don't block the response)
+        const telegramMsg = formatRSVPNotification({
+            isUpdate,
+            isAttending: is_attending === 1,
+            names: dbNames,
+            guestCount: guest_count,
+            guests,
+            phone,
+            side,
+            reason,
+        });
+        sendTelegramNotification(telegramMsg).catch(() => {});
 
         revalidatePath("/admin");
         return { success: true, message: "תודה רבה! עכשיו זה מעודכן בהצלחה." };
