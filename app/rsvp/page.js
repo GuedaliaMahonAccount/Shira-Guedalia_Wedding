@@ -84,6 +84,15 @@ function RSVPContent() {
 
     async function handleSubmit(event) {
         event.preventDefault();
+        // Validate: at least the first guest name is required
+        if (isAttending === 'yes' && !guests[0]?.name?.trim()) {
+            setResult({ type: "error", message: "נא למלא לפחות את שם האורח/ת הראשון/ה" });
+            return;
+        }
+        if (isAttending === 'no' && !noGuests[0]?.name?.trim()) {
+            setResult({ type: "error", message: "נא למלא לפחות את השם" });
+            return;
+        }
         setIsSubmitting(true);
         setResult(null);
         const data = {
@@ -199,7 +208,7 @@ function RSVPContent() {
                     </div>
                 )}
                 
-                {/* Gifts List navigation */}
+                {/* Gifts List navigation - commented out
                 {((result?.type === 'success') || (hasAlreadyResponded && isAttending === null && !result)) && !existingRsvpToConfirm && (
                     <div className="gifts-navigation" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem', marginBottom: '1.5rem', width: '100%' }}>
                         <Link href="/gifts" className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: 'linear-gradient(135deg, var(--amber) 0%, var(--gold) 100%)' }}>
@@ -210,6 +219,7 @@ function RSVPContent() {
                         </Link>
                     </div>
                 )}
+                */}
 
 
                 {/* Attending choice buttons */}
@@ -321,7 +331,7 @@ function RSVPContent() {
                                 </div>
 
                                 <div className="guests-list">
-                                    <p className="guests-hint">שמות המגיעים ובחירת אירועים (לא חובה):</p>
+                                    <p className="guests-hint">שמות המגיעים ובחירת אירועים:</p>
                                     {guests.map((guest, idx) => (
                                         <div key={idx} className="guest-card">
                                             <div className="guest-row">
@@ -332,6 +342,7 @@ function RSVPContent() {
                                                     onChange={(e) => handleGuestChange(idx, "name", e.target.value)}
                                                     className="guest-name-input"
                                                     placeholder="שם האורח/ת"
+                                                    required={idx === 0}
                                                 />
                                             </div>
                                             <div className="guest-events" style={{ flexWrap: 'wrap' }}>
@@ -400,7 +411,7 @@ function RSVPContent() {
                                 </div>
 
                                 <div className="guests-list">
-                                    <p className="guests-hint">שמות (לא חובה):</p>
+                                    <p className="guests-hint">שמות:</p>
                                     {noGuests.map((guest, idx) => (
                                         <div key={idx} className="guest-card">
                                             <div className="guest-row">
@@ -410,7 +421,8 @@ function RSVPContent() {
                                                     value={guest.name}
                                                     onChange={(e) => handleNoGuestChange(idx, e.target.value)}
                                                     className="guest-name-input"
-                                                    placeholder="שם (לא חובה)"
+                                                    placeholder="שם"
+                                                    required={idx === 0}
                                                 />
                                             </div>
                                         </div>
