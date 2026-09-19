@@ -18,6 +18,7 @@ function RSVPContent() {
     const [existingRsvpToConfirm, setExistingRsvpToConfirm] = useState(null);
     const [forceUpdateId, setForceUpdateId] = useState(null);
     const [confirmedAttending, setConfirmedAttending] = useState(null);
+    const [toastMessage, setToastMessage] = useState("");
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -84,13 +85,11 @@ function RSVPContent() {
 
     async function handleSubmit(event) {
         event.preventDefault();
-        // Validate: at least the first guest name is required
-        if (isAttending === 'yes' && !guests[0]?.name?.trim()) {
-            setResult({ type: "error", message: "נא למלא לפחות את שם האורח/ת הראשון/ה" });
-            return;
-        }
-        if (isAttending === 'no' && !noGuests[0]?.name?.trim()) {
-            setResult({ type: "error", message: "נא למלא לפחות את השם" });
+        // Validate: first guest must have full name (first + last)
+        const nameToCheck = isAttending === 'yes' ? guests[0]?.name?.trim() : noGuests[0]?.name?.trim();
+        if (!nameToCheck || nameToCheck.split(/\s+/).length < 2) {
+            setToastMessage("נא למלא שם פרטי ושם משפחה");
+            setTimeout(() => setToastMessage(""), 3500);
             return;
         }
         setIsSubmitting(true);
@@ -341,7 +340,7 @@ function RSVPContent() {
                                                     value={guest.name}
                                                     onChange={(e) => handleGuestChange(idx, "name", e.target.value)}
                                                     className="guest-name-input"
-                                                    placeholder="שם האורח/ת"
+                                                    placeholder="שם פרטי ושם משפחה"
                                                     required={idx === 0}
                                                 />
                                             </div>
@@ -421,7 +420,7 @@ function RSVPContent() {
                                                     value={guest.name}
                                                     onChange={(e) => handleNoGuestChange(idx, e.target.value)}
                                                     className="guest-name-input"
-                                                    placeholder="שם"
+                                                    placeholder="שם פרטי ושם משפחה"
                                                     required={idx === 0}
                                                 />
                                             </div>
@@ -449,6 +448,17 @@ function RSVPContent() {
                     </form>
                 )}
             </div>
+
+            {/* Validation toast popup */}
+            {toastMessage && (
+                <div className="validation-toast">
+                    <svg viewBox="0 0 24 24" fill="none" style={{ width: '1.3rem', height: '1.3rem', flexShrink: 0 }}>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+                        <path d="M12 8v4M12 16h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                    {toastMessage}
+                </div>
+            )}
 
             <footer className="rsvp-footer">
                 <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="heart-icon">

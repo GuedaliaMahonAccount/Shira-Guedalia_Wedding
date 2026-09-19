@@ -1489,6 +1489,41 @@ body {
   }
 }
 
+/* Validation toast popup */
+.validation-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #3a2a1a 0%, #2a1e14 100%);
+  color: #ffd9a0;
+  border: 1px solid rgba(180, 140, 100, 0.4);
+  padding: 0.9rem 1.5rem;
+  border-radius: 14px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(180, 140, 100, 0.15);
+  animation: toast-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  direction: rtl;
+}
+
+@keyframes toast-slide-up {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .rsvp-footer {
   margin-top: 1.5rem;
   font-family: var(--font-body);
