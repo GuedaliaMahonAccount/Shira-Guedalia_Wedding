@@ -1525,7 +1525,7 @@ body {
 }
 
 .rsvp-footer {
-  margin-top: 1.5rem;
+  margin: 2rem 0;
   font-family: var(--font-body);
   font-size: 0.72rem;
   letter-spacing: 0.07em;
@@ -1533,8 +1533,41 @@ body {
   opacity: 0.55;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   z-index: 5;
+}
+
+.side-choice {
+  display: flex;
+  gap: clamp(1rem, 5vw, 2rem);
+  margin-top: 0.5rem;
+}
+
+.side-choice label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(180, 140, 100, 0.05);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.side-choice label:has(input:checked) {
+  background: rgba(180, 140, 100, 0.15);
+  border-color: rgba(180, 140, 100, 0.3);
+}
+
+.side-choice input {
+  accent-color: var(--gold);
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 /* RSVP responsive */

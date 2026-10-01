@@ -47,18 +47,17 @@ export async function fetchStats(passcode) {
                     rsvp.guests.forEach(g => {
                         if (g.chuppah) stats.totalChuppah += 1;
                         if (g.eat !== false) stats.totalEat += 1;
-                        if (g.dance) stats.totalDance += 1;
+
                     });
                 } else {
                     if (rsvp.attendance_type === "חופה") {
                         stats.totalChuppah += rsvp.guest_count;
                         stats.totalEat += rsvp.guest_count; // Assumption for old data
-                    } else if (rsvp.attendance_type === "ריקודים") {
-                        stats.totalDance += rsvp.guest_count;
+
                     } else {
                         stats.totalChuppah += rsvp.guest_count;
                         stats.totalEat += rsvp.guest_count;
-                        stats.totalDance += rsvp.guest_count;
+
                     }
                 }
             } else {
@@ -104,13 +103,13 @@ export async function exportGuestsData(passcode, exportType = "all") {
         const rows = docs.map(doc => {
             const isAttendingText = doc.is_attending === 1 ? "יגיע" : "לא יגיע";
             let comments = doc.reason || "";
-            // Optionally, add guest names to notes
+            // Optionally, add guest names and their events to notes
             if (doc.guests && doc.guests.length > 0) {
                  const guestList = doc.guests.map(g => {
                      let events = [];
                      if (g.chuppah) events.push("חופה");
                      if (g.eat !== false) events.push("אוכל");
-                     if (g.dance) events.push("ריקודים");
+
                      const evStr = events.length > 0 ? ` (${events.join('+')})` : "";
                      return `${g.name || "אורח"}${evStr}`;
                  }).join(", ");
