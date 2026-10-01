@@ -32,7 +32,7 @@ function RSVPContent() {
     }, []);
 
     const [guestCount, setGuestCount] = useState(1);
-    const [guests, setGuests] = useState([{ name: "", chuppah: true, dance: true, eat: true }]);
+    const [guests, setGuests] = useState([{ name: "", chuppah: true, eat: true }]);
     const [phone, setPhone] = useState("");
     const [noGuests, setNoGuests] = useState([{ name: "" }]);
     const [noGuestCount, setNoGuestCount] = useState(1);
@@ -47,7 +47,7 @@ function RSVPContent() {
         setGuests(prev => {
             const next = [...prev];
             if (count > prev.length) {
-                for (let i = prev.length; i < count; i++) next.push({ name: "", chuppah: true, dance: true, eat: true });
+                for (let i = prev.length; i < count; i++) next.push({ name: "", chuppah: true, eat: true });
             } else {
                 next.splice(count);
             }
@@ -355,11 +355,7 @@ function RSVPContent() {
                                                     <span className="checkmark"></span>
                                                     <span>לשבת לאכול</span>
                                                 </label>
-                                                <label className="event-check">
-                                                    <input type="checkbox" checked={guest.dance} onChange={(e) => handleGuestChange(idx, "dance", e.target.checked)} className="checkbox" />
-                                                    <span className="checkmark"></span>
-                                                    <span>ריקודים</span>
-                                                </label>
+
                                             </div>
                                         </div>
                                     ))}
