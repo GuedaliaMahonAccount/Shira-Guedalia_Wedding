@@ -92,6 +92,12 @@ function RSVPContent() {
             setTimeout(() => setToastMessage(""), 3500);
             return;
         }
+        // Validate: phone number is required
+        if (!phone.trim()) {
+            setToastMessage("נא למלא מספר טלפון");
+            setTimeout(() => setToastMessage(""), 3500);
+            return;
+        }
         setIsSubmitting(true);
         setResult(null);
         const data = {
@@ -376,11 +382,12 @@ function RSVPContent() {
                                 </div>
 
                                 <div className="field-group" style={{ marginTop: '1rem' }}>
-                                    <label htmlFor="phone" className="field-label">מספר טלפון (לא חובה)</label>
+                                    <label htmlFor="phone" className="field-label">מספר טלפון <span style={{ color: 'rgba(180,140,100,0.7)', fontSize: '0.8em' }}>(חובה)</span></label>
                                     <input
                                         id="phone" type="tel" dir="ltr" value={phone}
                                         onChange={(e) => setPhone(e.target.value)}
                                         className="field-input" placeholder="050-0000000"
+                                        required
                                     />
                                 </div>
                             </div>
@@ -422,6 +429,16 @@ function RSVPContent() {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+
+                                <div className="field-group" style={{ marginTop: '1rem' }}>
+                                    <label htmlFor="phone-no" className="field-label">מספר טלפון <span style={{ color: 'rgba(180,140,100,0.7)', fontSize: '0.8em' }}>(חובה)</span></label>
+                                    <input
+                                        id="phone-no" type="tel" dir="ltr" value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
+                                        className="field-input" placeholder="050-0000000"
+                                        required
+                                    />
                                 </div>
 
                                 <div className="field-group">
