@@ -328,6 +328,11 @@ export default function AdminDashboard() {
     const notAttending = stats.notAttending || 0;
     const totalChuppah = stats.totalChuppah || 0;
     const totalEat = stats.totalEat || 0;
+    const guestsGroomSide = stats.guestsGroomSide || 0;
+    const guestsBrideSide = stats.guestsBrideSide || 0;
+    const guestsNoSide = stats.guestsNoSide || 0;
+    const attendingGroomSide = stats.attendingGroomSide || 0;
+    const attendingBrideSide = stats.attendingBrideSide || 0;
 
     const pending = totalInvitations > 0 ? Math.max(0, totalInvitations - totalResponses) : null;
     const pendingPct = totalInvitations > 0 ? Math.round((pending / totalInvitations) * 100) : 0;
@@ -402,6 +407,28 @@ export default function AdminDashboard() {
                             <HBar label="חופה" value={totalChuppah} max={totalGuests} color="linear-gradient(90deg, #C9A87C, #E8D5BC)" />
                             <HBar label="אוכל" value={totalEat} max={totalGuests} color="linear-gradient(90deg, #B48C64, #D4B896)" />
 
+                        </div>
+                    </div>
+
+                    {/* Side breakdown */}
+                    <div className="chart-card">
+                        <div className="chart-card-header">
+                            <h2 className="chart-card-title">פילוח לפי צד</h2>
+                            <span className="chart-card-badge">{totalGuests} אורחים מאשרים</span>
+                        </div>
+                        <div className="radials-wrap">
+                            <RadialRing value={guestsGroomSide} max={totalGuests} label="צד חתן" color="#5B8A72" delay={0} />
+                            <RadialRing value={guestsBrideSide} max={totalGuests} label="צד כלה" color="#C9806A" delay={100} />
+                            {guestsNoSide > 0 && (
+                                <RadialRing value={guestsNoSide} max={totalGuests} label="לא צוין" color="#A89080" delay={200} />
+                            )}
+                        </div>
+                        <div className="event-bars">
+                            <HBar label={`צד חתן (${attendingGroomSide} משפחות)`} value={guestsGroomSide} max={totalGuests} color="linear-gradient(90deg, #5B8A72, #8AB8A0)" />
+                            <HBar label={`צד כלה (${attendingBrideSide} משפחות)`} value={guestsBrideSide} max={totalGuests} color="linear-gradient(90deg, #C9806A, #E8B8A8)" />
+                            {guestsNoSide > 0 && (
+                                <HBar label="לא צוין צד" value={guestsNoSide} max={totalGuests} color="linear-gradient(90deg, #A89080, #C9BEB5)" />
+                            )}
                         </div>
                     </div>
 
@@ -494,6 +521,7 @@ export default function AdminDashboard() {
                                         <tr>
                                             <th>שם</th>
                                             <th>מגיע?</th>
+                                            <th>צד</th>
                                             <th>אורחים</th>
                                             <th>אירועים</th>
                                             <th>טלפון</th>
@@ -509,6 +537,15 @@ export default function AdminDashboard() {
                                                     {rsvp.is_attending === 1
                                                         ? <span className="badge badge-yes">כן ✓</span>
                                                         : <span className="badge badge-no">לא</span>}
+                                                </td>
+                                                <td>
+                                                    {rsvp.side === "חתן" ? (
+                                                        <span className="badge" style={{ background: 'rgba(91,138,114,0.12)', color: '#3A7A50' }}>חתן</span>
+                                                    ) : rsvp.side === "כלה" ? (
+                                                        <span className="badge" style={{ background: 'rgba(201,128,106,0.12)', color: '#9A5040' }}>כלה</span>
+                                                    ) : (
+                                                        <span className="td-muted">—</span>
+                                                    )}
                                                 </td>
                                                 <td className="td-muted">{rsvp.is_attending === 1 ? rsvp.guest_count : "—"}</td>
                                                 <td className="td-muted td-events">
@@ -533,7 +570,7 @@ export default function AdminDashboard() {
                                         ))}
                                         {data.rsvps.length === 0 && (
                                             <tr>
-                                                <td colSpan="7" className="td-empty">אין עדיין תגובות...</td>
+                                                <td colSpan="8" className="td-empty">אין עדיין תגובות...</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -827,10 +864,13 @@ const adminStyles = `
   /* ── Charts grid ── */
   .charts-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
   }
 
+  @media (max-width: 960px) {
+    .charts-grid { grid-template-columns: repeat(2, 1fr); }
+  }
   @media (max-width: 700px) {
     .charts-grid { grid-template-columns: 1fr; }
   }
@@ -886,7 +926,8 @@ const adminStyles = `
   .hbar-fill { height: 100%; border-radius: 1rem; }
 
   /* Calculator */
-  .calculator-card { grid-column: span 2; }
+  .calculator-card { grid-column: span 3; }
+  @media (max-width: 960px) { .calculator-card { grid-column: span 2; } }
   @media (max-width: 700px) { .calculator-card { grid-column: span 1; } }
 
   .calc-wrap { display: flex; flex-direction: column; gap: 1rem; }

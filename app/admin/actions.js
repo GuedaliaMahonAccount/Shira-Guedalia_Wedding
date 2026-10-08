@@ -24,6 +24,7 @@ export async function fetchStats(passcode) {
             attendance_type: doc.attendance_type,
             is_attending: doc.is_attending,
             guests: doc.guests,
+            side: doc.side || "",
             created_at: doc.created_at ? doc.created_at.toISOString() : null
         }));
 
@@ -35,13 +36,32 @@ export async function fetchStats(passcode) {
             totalGuests: 0,
             totalChuppah: 0,
             totalEat: 0,
-            totalDance: 0
+            totalDance: 0,
+            // Per-side breakdown
+            attendingGroomSide: 0,
+            guestsGroomSide: 0,
+            attendingBrideSide: 0,
+            guestsBrideSide: 0,
+            attendingNoSide: 0,
+            guestsNoSide: 0
         };
 
         rawRsvps.forEach(rsvp => {
             if (rsvp.is_attending === 1) {
                 stats.attending += 1;
                 stats.totalGuests += rsvp.guest_count;
+
+                // Per-side stats
+                if (rsvp.side === "חתן") {
+                    stats.attendingGroomSide += 1;
+                    stats.guestsGroomSide += rsvp.guest_count;
+                } else if (rsvp.side === "כלה") {
+                    stats.attendingBrideSide += 1;
+                    stats.guestsBrideSide += rsvp.guest_count;
+                } else {
+                    stats.attendingNoSide += 1;
+                    stats.guestsNoSide += rsvp.guest_count;
+                }
 
                 if (rsvp.guests && Array.isArray(rsvp.guests) && rsvp.guests.length > 0) {
                     rsvp.guests.forEach(g => {
