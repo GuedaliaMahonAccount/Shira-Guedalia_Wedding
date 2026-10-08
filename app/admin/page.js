@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { fetchStats, exportGuestsData, deleteRsvp, fetchGiftsAdmin, deleteGiftAdmin } from "./actions";
+import { fetchStats, exportGuestsData, deleteRsvp, updateRsvp, fetchGiftsAdmin, deleteGiftAdmin } from "./actions";
 
 // ── Animated counter hook ────────────────────────────────────────
 function useCountUp(target, duration = 1200, started = false) {
@@ -198,6 +198,11 @@ export default function AdminDashboard() {
     const [showTable, setShowTable] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
 
+    // Edit States
+    const [editingId, setEditingId] = useState(null);
+    const [editForm, setEditForm] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
+
     // Gift States
     const [gifts, setGifts] = useState([]);
     const [showGiftsTable, setShowGiftsTable] = useState(false);
@@ -258,6 +263,40 @@ export default function AdminDashboard() {
         } else {
             handleLogin(); // refresh table
         }
+    };
+
+    // ── Edit handlers ──
+    const handleEdit = (rsvp) => {
+        setEditingId(rsvp.id);
+        setEditForm({
+            names: rsvp.names || "",
+            side: rsvp.side || "",
+            guest_count: rsvp.guest_count || 0,
+            phone: rsvp.phone || "",
+            admin_notes: rsvp.admin_notes || "",
+        });
+    };
+
+    const handleEditChange = (field, value) => {
+        setEditForm(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleEditSave = async () => {
+        setIsSaving(true);
+        const res = await updateRsvp(passcode, editingId, editForm);
+        setIsSaving(false);
+        if (res.error) {
+            alert(res.error);
+        } else {
+            setEditingId(null);
+            setEditForm({});
+            handleLogin(); // refresh data
+        }
+    };
+
+    const handleEditCancel = () => {
+        setEditingId(null);
+        setEditForm({});
     };
 
     const handleDeleteGift = async (id, giftDesc) => {
@@ -525,21 +564,45 @@ export default function AdminDashboard() {
                                             <th>אורחים</th>
                                             <th>אירועים</th>
                                             <th>טלפון</th>
+                                            <th>הערות מנהל</th>
                                             <th>תאריך</th>
                                             <th>פעולות</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {data.rsvps.map((rsvp) => (
-                                            <tr key={rsvp.id}>
-                                                <td className="td-name">{rsvp.names}</td>
+                                        {data.rsvps.map((rsvp) => {
+                                            const isEditing = editingId === rsvp.id;
+                                            return (
+                                            <tr key={rsvp.id} className={isEditing ? 'editing-row' : ''}>
+                                                {/* שם */}
+                                                <td className="td-name">
+                                                    {isEditing ? (
+                                                        <input
+                                                            className="edit-input"
+                                                            value={editForm.names}
+                                                            onChange={(e) => handleEditChange('names', e.target.value)}
+                                                        />
+                                                    ) : rsvp.names}
+                                                </td>
+                                                {/* מגיע? */}
                                                 <td>
                                                     {rsvp.is_attending === 1
                                                         ? <span className="badge badge-yes">כן ✓</span>
                                                         : <span className="badge badge-no">לא</span>}
                                                 </td>
+                                                {/* צד */}
                                                 <td>
-                                                    {rsvp.side === "חתן" ? (
+                                                    {isEditing ? (
+                                                        <select
+                                                            className="edit-select"
+                                                            value={editForm.side}
+                                                            onChange={(e) => handleEditChange('side', e.target.value)}
+                                                        >
+                                                            <option value="">לא צוין</option>
+                                                            <option value="חתן">חתן</option>
+                                                            <option value="כלה">כלה</option>
+                                                        </select>
+                                                    ) : rsvp.side === "חתן" ? (
                                                         <span className="badge" style={{ background: 'rgba(91,138,114,0.12)', color: '#3A7A50' }}>חתן</span>
                                                     ) : rsvp.side === "כלה" ? (
                                                         <span className="badge" style={{ background: 'rgba(201,128,106,0.12)', color: '#9A5040' }}>כלה</span>
@@ -547,7 +610,19 @@ export default function AdminDashboard() {
                                                         <span className="td-muted">—</span>
                                                     )}
                                                 </td>
-                                                <td className="td-muted">{rsvp.is_attending === 1 ? rsvp.guest_count : "—"}</td>
+                                                {/* אורחים */}
+                                                <td className="td-muted">
+                                                    {isEditing ? (
+                                                        <input
+                                                            className="edit-input edit-input-sm"
+                                                            type="number"
+                                                            min="0"
+                                                            value={editForm.guest_count}
+                                                            onChange={(e) => handleEditChange('guest_count', parseInt(e.target.value) || 0)}
+                                                        />
+                                                    ) : rsvp.is_attending === 1 ? rsvp.guest_count : "—"}
+                                                </td>
+                                                {/* אירועים */}
                                                 <td className="td-muted td-events">
                                                     {rsvp.is_attending === 1 ? (
                                                         rsvp.guests?.length > 0
@@ -555,22 +630,59 @@ export default function AdminDashboard() {
                                                                 let t = [];
                                                                 if (g.chuppah) t.push("חופה");
                                                                 if (g.eat !== false) t.push("אוכל");
-
                                                                 return t.join("+");
                                                             }).join(", ")
                                                             : rsvp.attendance_type
                                                     ) : "—"}
                                                 </td>
-                                                <td className="td-phone" dir="ltr">{rsvp.phone || "—"}</td>
+                                                {/* טלפון */}
+                                                <td className="td-phone" dir="ltr">
+                                                    {isEditing ? (
+                                                        <input
+                                                            className="edit-input edit-input-sm"
+                                                            value={editForm.phone}
+                                                            onChange={(e) => handleEditChange('phone', e.target.value)}
+                                                            dir="ltr"
+                                                        />
+                                                    ) : rsvp.phone || "—"}
+                                                </td>
+                                                {/* הערות מנהל */}
+                                                <td className="td-muted">
+                                                    {isEditing ? (
+                                                        <input
+                                                            className="edit-input"
+                                                            value={editForm.admin_notes}
+                                                            onChange={(e) => handleEditChange('admin_notes', e.target.value)}
+                                                            placeholder="הערות..."
+                                                        />
+                                                    ) : rsvp.admin_notes || "—"}
+                                                </td>
+                                                {/* תאריך */}
                                                 <td className="td-date">{new Date(rsvp.created_at).toLocaleDateString('he-IL')}</td>
+                                                {/* פעולות */}
                                                 <td className="td-actions">
-                                                    <button onClick={() => handleDelete(rsvp.id, rsvp.names)} className="delete-btn">מחיקה</button>
+                                                    {isEditing ? (
+                                                        <div className="edit-actions">
+                                                            <button onClick={handleEditSave} className="save-btn" disabled={isSaving}>
+                                                                {isSaving ? "שומר..." : "שמור"}
+                                                            </button>
+                                                            <button onClick={handleEditCancel} className="cancel-btn" disabled={isSaving}>
+                                                                ביטול
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="edit-actions">
+                                                            <button onClick={() => handleEdit(rsvp)} className="edit-btn">עריכה</button>
+                                                            <button onClick={() => handleDelete(rsvp.id, rsvp.names)} className="delete-btn">מחיקה</button>
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </tr>
-                                        ))}
+                                            );
+                                        })}
                                         {data.rsvps.length === 0 && (
                                             <tr>
-                                                <td colSpan="8" className="td-empty">אין עדיין תגובות...</td>
+                                                <td colSpan="9" className="td-empty">אין עדיין תגובות...</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -1027,6 +1139,108 @@ const adminStyles = `
     font-family: var(--font-body);
   }
   .delete-btn:hover { background: rgba(201,128,106,0.2); }
+
+  /* Edit button */
+  .edit-btn {
+    background: rgba(180,140,100,0.1);
+    color: var(--gold-deep);
+    border: 1px solid rgba(180,140,100,0.3);
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+  }
+  .edit-btn:hover { background: rgba(180,140,100,0.2); }
+
+  /* Save / Cancel buttons */
+  .save-btn {
+    background: rgba(74,139,92,0.12);
+    color: #3A7A50;
+    border: 1px solid rgba(74,139,92,0.3);
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+    font-weight: 600;
+  }
+  .save-btn:hover { background: rgba(74,139,92,0.22); }
+  .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .cancel-btn {
+    background: rgba(168,144,128,0.1);
+    color: var(--text-mid);
+    border: 1px solid rgba(168,144,128,0.25);
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+  }
+  .cancel-btn:hover { background: rgba(168,144,128,0.2); }
+  .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .edit-actions {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Editing row highlight */
+  .editing-row {
+    background: rgba(180,140,100,0.06) !important;
+    box-shadow: inset 0 0 0 1px rgba(180,140,100,0.15);
+  }
+
+  /* Inline edit inputs */
+  .edit-input {
+    padding: 0.4rem 0.6rem;
+    background: rgba(255,252,246,0.95);
+    border: 1px solid rgba(180,140,100,0.3);
+    border-radius: 0.5rem;
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    color: var(--text-dark);
+    outline: none;
+    width: 100%;
+    min-width: 80px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .edit-input:focus {
+    border-color: var(--gold-light);
+    box-shadow: 0 0 0 2px rgba(180,140,100,0.12);
+  }
+  .edit-input-sm { max-width: 80px; }
+
+  .edit-select {
+    padding: 0.4rem 0.5rem;
+    background: rgba(255,252,246,0.95);
+    border: 1px solid rgba(180,140,100,0.3);
+    border-radius: 0.5rem;
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    color: var(--text-dark);
+    outline: none;
+    cursor: pointer;
+    min-width: 80px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237A6055' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 0.5rem center;
+    padding-left: 1.6rem;
+  }
+  .edit-select:focus {
+    border-color: var(--gold-light);
+    box-shadow: 0 0 0 2px rgba(180,140,100,0.12);
+  }
 
   .badge {
     display: inline-block;

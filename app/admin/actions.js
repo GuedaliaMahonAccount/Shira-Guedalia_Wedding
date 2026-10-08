@@ -25,6 +25,7 @@ export async function fetchStats(passcode) {
             is_attending: doc.is_attending,
             guests: doc.guests,
             side: doc.side || "",
+            admin_notes: doc.admin_notes || "",
             created_at: doc.created_at ? doc.created_at.toISOString() : null
         }));
 
@@ -227,3 +228,34 @@ export async function deleteGiftAdmin(passcode, id) {
     }
 }
 
+export async function updateRsvp(passcode, id, updates) {
+    if (passcode !== ADMIN_PASSCODE) {
+        return { error: "סיסמה שגויה" };
+    }
+
+    // Only allow updating specific safe fields
+    const allowedFields = ["side", "names", "guest_count", "phone", "is_attending", "admin_notes"];
+    const sanitizedUpdates = {};
+    for (const key of Object.keys(updates)) {
+        if (allowedFields.includes(key)) {
+            sanitizedUpdates[key] = updates[key];
+        }
+    }
+
+    if (Object.keys(sanitizedUpdates).length === 0) {
+        return { error: "אין שדות לעדכון" };
+    }
+
+    try {
+        const client = await clientPromise;
+        const db = client.db("wedding");
+        await db.collection("rsvps").updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { ...sanitizedUpdates, updated_at: new Date() } }
+        );
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update rsvp", error);
+        return { error: "שגיאה בעדכון הרשומה" };
+    }
+}
