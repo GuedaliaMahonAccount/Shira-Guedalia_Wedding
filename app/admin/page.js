@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { fetchStats, exportGuestsData, deleteRsvp, updateRsvp, fetchGiftsAdmin, deleteGiftAdmin } from "./actions";
 
 // ── Animated counter hook ────────────────────────────────────────
@@ -188,6 +188,15 @@ function RadialRing({ value, max, label, color, delay = 0 }) {
     );
 }
 
+// ── Sort Indicator Helper ─────────────────────────────────────────
+function SortIndicator({ active, direction }) {
+    return (
+        <span className={`sort-indicator ${active ? 'active' : ''}`} aria-hidden="true">
+            {active ? (direction === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+    );
+}
+
 // ── Main Component ────────────────────────────────────────────────
 export default function AdminDashboard() {
     const [passcode, setPasscode] = useState("");
@@ -195,8 +204,14 @@ export default function AdminDashboard() {
     const [error, setError] = useState(null);
     const [data, setData] = useState(null);
     const [totalInvitations, setTotalInvitations] = useState(0);
-    const [showTable, setShowTable] = useState(false);
+    const [showTable, setShowTable] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
+
+    // Filter & Sort States
+    const [searchTerm, setSearchTerm] = useState("");
+    const [sideFilter, setSideFilter] = useState("all"); // "all", "חתן", "כלה", "none"
+    const [attendanceFilter, setAttendanceFilter] = useState("all"); // "all", "yes", "no"
+    const [sortConfig, setSortConfig] = useState({ key: "created_at", direction: "desc" });
 
     // Edit States
     const [editingId, setEditingId] = useState(null);
@@ -209,20 +224,140 @@ export default function AdminDashboard() {
     const [revealAllNames, setRevealAllNames] = useState(false);
     const [revealedNames, setRevealedNames] = useState({});
 
+    const handleSort = (key) => {
+        setSortConfig(prev => {
+            if (prev.key === key) {
+                return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+            }
+            return { key, direction: (key === "names" || key === "side") ? "asc" : "desc" };
+        });
+    };
+
+    const sideCounts = useMemo(() => {
+        const rsvps = data?.rsvps || [];
+
+        // Sum attending guests (the real count of people coming!)
+        const sumAttendingGuests = (filterFn) =>
+            rsvps.filter(r => r.is_attending === 1 && (!filterFn || filterFn(r)))
+                .reduce((sum, r) => sum + (r.guest_count || 0), 0);
+
+        // Count responses/records
+        const countResponses = (filterFn) =>
+            rsvps.filter(r => !filterFn || filterFn(r)).length;
+
+        const allGuests = sumAttendingGuests();
+        const groomGuests = sumAttendingGuests(r => r.side === "חתן");
+        const brideGuests = sumAttendingGuests(r => r.side === "כלה");
+        const noneGuests = sumAttendingGuests(r => !r.side || (r.side !== "חתן" && r.side !== "כלה"));
+
+        return {
+            // Real guest numbers (actual people coming)
+            allGuests,
+            groomGuests, // 40!
+            brideGuests,
+            noneGuests,
+            attendingGuests: allGuests,
+            notAttendingCount: countResponses(r => r.is_attending === 0),
+
+            // Number of responses / families
+            allResponses: rsvps.length,
+            groomResponses: countResponses(r => r.side === "חתן"),
+            brideResponses: countResponses(r => r.side === "כלה"),
+            noneResponses: countResponses(r => !r.side || (r.side !== "חתן" && r.side !== "כלה")),
+            attendingResponses: countResponses(r => r.is_attending === 1),
+        };
+    }, [data?.rsvps]);
+
+    const hasActiveFilters = searchTerm.trim() !== "" || sideFilter !== "all" || attendanceFilter !== "all";
+
+    const resetFilters = () => {
+        setSearchTerm("");
+        setSideFilter("all");
+        setAttendanceFilter("all");
+    };
+
+    const filteredAndSortedRsvps = useMemo(() => {
+        if (!data?.rsvps) return [];
+        let list = [...data.rsvps];
+
+        // Filter by side
+        if (sideFilter === "חתן") {
+            list = list.filter(r => r.side === "חתן");
+        } else if (sideFilter === "כלה") {
+            list = list.filter(r => r.side === "כלה");
+        } else if (sideFilter === "none") {
+            list = list.filter(r => !r.side || (r.side !== "חתן" && r.side !== "כלה"));
+        }
+
+        // Filter by attendance
+        if (attendanceFilter === "yes") {
+            list = list.filter(r => r.is_attending === 1);
+        } else if (attendanceFilter === "no") {
+            list = list.filter(r => r.is_attending === 0);
+        }
+
+        // Filter by search term
+        if (searchTerm.trim()) {
+            const q = searchTerm.trim().toLowerCase();
+            list = list.filter(r => {
+                const namesMatch = (r.names || "").toLowerCase().includes(q);
+                const phoneMatch = (r.phone || "").toLowerCase().includes(q);
+                const notesMatch = (r.admin_notes || "").toLowerCase().includes(q);
+                const sideMatch = (r.side || "").toLowerCase().includes(q);
+                const subGuestsMatch = Array.isArray(r.guests) && r.guests.some(g => (g.name || "").toLowerCase().includes(q));
+                return namesMatch || phoneMatch || notesMatch || sideMatch || subGuestsMatch;
+            });
+        }
+
+        // Sort
+        list.sort((a, b) => {
+            let res = 0;
+            if (sortConfig.key === "names") {
+                const nameA = (a.names || "").trim();
+                const nameB = (b.names || "").trim();
+                res = nameA.localeCompare(nameB, 'he');
+            } else if (sortConfig.key === "is_attending") {
+                res = (a.is_attending || 0) - (b.is_attending || 0);
+            } else if (sortConfig.key === "side") {
+                const sideA = a.side || "";
+                const sideB = b.side || "";
+                res = sideA.localeCompare(sideB, 'he');
+            } else if (sortConfig.key === "guest_count") {
+                const countA = a.is_attending === 1 ? (a.guest_count || 0) : 0;
+                const countB = b.is_attending === 1 ? (b.guest_count || 0) : 0;
+                res = countA - countB;
+            } else if (sortConfig.key === "created_at") {
+                const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                res = timeA - timeB;
+            }
+            return sortConfig.direction === "asc" ? res : -res;
+        });
+
+        return list;
+    }, [data?.rsvps, sideFilter, attendanceFilter, searchTerm, sortConfig]);
+
+    const filteredStats = useMemo(() => {
+        const totalCount = filteredAndSortedRsvps.length;
+        const attendingCount = filteredAndSortedRsvps.filter(r => r.is_attending === 1).length;
+        const totalGuests = filteredAndSortedRsvps.reduce((acc, r) => acc + (r.is_attending === 1 ? (r.guest_count || 0) : 0), 0);
+        return { totalCount, attendingCount, totalGuests };
+    }, [filteredAndSortedRsvps]);
+
     const handleLogin = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
         setError(null);
         const res = await fetchStats(passcode);
-        if (res.error) { 
-            setError(res.error); 
-        } else { 
-            setData(res); 
+        if (res.error) {
+            setError(res.error);
+        } else {
+            setData(res);
             // Also fetch gifts
             const giftsRes = await fetchGiftsAdmin(passcode);
             if (giftsRes.success) {
                 setGifts(giftsRes.gifts);
             }
-            setIsAuthenticated(true); 
+            setIsAuthenticated(true);
         }
     };
 
@@ -247,16 +382,16 @@ export default function AdminDashboard() {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
+
             // Re-fetch stats to update UI (just in case)
-            handleLogin(); 
+            handleLogin();
             alert("הייצוא בוצע בהצלחה!");
         }
     };
 
     const handleDelete = async (id, name) => {
         if (!window.confirm(`האם אתה בטוח שברצונך למחוק את הרשומה של ${name}?`)) return;
-        
+
         const res = await deleteRsvp(passcode, id);
         if (res.error) {
             alert(res.error);
@@ -412,42 +547,24 @@ export default function AdminDashboard() {
                     <StatCard label="אורחים מאושרים" value={totalGuests} delay={80} accent="#4A8B5C"
                         icon={<svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>}
                     />
-                    <StatCard label="אישרו הגעה" value={attending} delay={160} accent="#B48C64"
+                    {/* <StatCard label="אישרו הגעה" value={attending} delay={160} accent="#B48C64"
                         icon={<svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>}
-                    />
-                    <StatCard label="לא מגיעים" value={notAttending} delay={240} accent="#C9806A"
+                    /> */}
+                    {/* <StatCard label="לא מגיעים" value={notAttending} delay={240} accent="#C9806A"
                         icon={<svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>}
-                    />
+                    /> */}
                 </section>
 
                 {/* ── Charts Row ── */}
                 <section className="charts-grid">
                     {/* Donut */}
-                    <div className="chart-card">
+                    {/* <div className="chart-card">
                         <div className="chart-card-header">
                             <h2 className="chart-card-title">התפלגות תגובות</h2>
                             <span className="chart-card-badge">{totalResponses} סה״כ</span>
                         </div>
                         <DonutChart attending={attending} notAttending={notAttending} total={totalResponses} />
-                    </div>
-
-                    {/* Attendance type radials */}
-                    <div className="chart-card">
-                        <div className="chart-card-header">
-                            <h2 className="chart-card-title">פילוח לפי אירוע</h2>
-                            <span className="chart-card-badge">{totalGuests} אורחים</span>
-                        </div>
-                        <div className="radials-wrap">
-                            <RadialRing value={totalChuppah} max={totalGuests} label="חופה" color="#C9A87C" delay={0} />
-                            <RadialRing value={totalEat} max={totalGuests} label="אוכל" color="#B48C64" delay={100} />
-
-                        </div>
-                        <div className="event-bars">
-                            <HBar label="חופה" value={totalChuppah} max={totalGuests} color="linear-gradient(90deg, #C9A87C, #E8D5BC)" />
-                            <HBar label="אוכל" value={totalEat} max={totalGuests} color="linear-gradient(90deg, #B48C64, #D4B896)" />
-
-                        </div>
-                    </div>
+                    </div> */}
 
                     {/* Side breakdown */}
                     <div className="chart-card">
@@ -468,6 +585,24 @@ export default function AdminDashboard() {
                             {guestsNoSide > 0 && (
                                 <HBar label="לא צוין צד" value={guestsNoSide} max={totalGuests} color="linear-gradient(90deg, #A89080, #C9BEB5)" />
                             )}
+                        </div>
+                    </div>
+
+                    {/* Attendance type radials */}
+                    <div className="chart-card">
+                        <div className="chart-card-header">
+                            <h2 className="chart-card-title">פילוח לפי אירוע</h2>
+                            <span className="chart-card-badge">{totalGuests} אורחים</span>
+                        </div>
+                        <div className="radials-wrap">
+                            <RadialRing value={totalChuppah} max={totalGuests} label="חופה" color="#C9A87C" delay={0} />
+                            <RadialRing value={totalEat} max={totalGuests} label="אוכל" color="#B48C64" delay={100} />
+
+                        </div>
+                        <div className="event-bars">
+                            <HBar label="חופה" value={totalChuppah} max={totalGuests} color="linear-gradient(90deg, #C9A87C, #E8D5BC)" />
+                            <HBar label="אוכל" value={totalEat} max={totalGuests} color="linear-gradient(90deg, #B48C64, #D4B896)" />
+
                         </div>
                     </div>
 
@@ -533,7 +668,11 @@ export default function AdminDashboard() {
                     <div className="table-header">
                         <div>
                             <h2 className="table-title">רשימת משיבים</h2>
-                            <p className="table-sub">{data.rsvps.length} רשומות</p>
+                            <p className="table-sub">
+                                {hasActiveFilters
+                                    ? `${filteredStats.totalGuests} אורחים מגיעים (${filteredStats.totalCount} רשומות מסוננות)`
+                                    : `${stats.totalGuests} אורחים מגיעים בסה״כ (${data.rsvps.length} רשומות)`}
+                            </p>
                         </div>
                         <div className="table-actions" style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             <button className="table-toggle" onClick={() => handleExport('all')} disabled={isExporting}>
@@ -554,135 +693,285 @@ export default function AdminDashboard() {
 
                     {showTable && (
                         <div className="table-wrap">
+                            {/* ── Filter & Search Toolbar ── */}
+                            <div className="table-filters-container">
+                                <div className="filters-row">
+                                    {/* Search Input */}
+                                    <div className="search-box">
+                                        <svg className="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16">
+                                            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
+                                            <path d="M20 20L16 16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                                        </svg>
+                                        <input
+                                            type="text"
+                                            placeholder="חיפוש לפי שם, טלפון, הערה..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="search-input"
+                                        />
+                                        {searchTerm && (
+                                            <button className="search-clear-btn" onClick={() => setSearchTerm("")} title="נקה חיפוש">
+                                                ✕
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Side Filter Pills */}
+                                    <div className="filter-group">
+                                        <span className="filter-group-title">צד:</span>
+                                        <div className="filter-pills">
+                                            <button
+                                                type="button"
+                                                className={`filter-pill ${sideFilter === "all" ? "active" : ""}`}
+                                                onClick={() => setSideFilter("all")}
+                                            >
+                                                הכל <span className="pill-count">{sideCounts.allGuests}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`filter-pill pill-groom ${sideFilter === "חתן" ? "active" : ""}`}
+                                                onClick={() => setSideFilter("חתן")}
+                                            >
+                                                צד חתן <span className="pill-count">{sideCounts.groomGuests}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`filter-pill pill-bride ${sideFilter === "כלה" ? "active" : ""}`}
+                                                onClick={() => setSideFilter("כלה")}
+                                            >
+                                                צד כלה <span className="pill-count">{sideCounts.brideGuests}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`filter-pill ${sideFilter === "none" ? "active" : ""}`}
+                                                onClick={() => setSideFilter("none")}
+                                            >
+                                                לא צוין <span className="pill-count">{sideCounts.noneGuests}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Attendance Filter Pills */}
+                                    <div className="filter-group">
+                                        <span className="filter-group-title">הגעה:</span>
+                                        <div className="filter-pills">
+                                            <button
+                                                type="button"
+                                                className={`filter-pill ${attendanceFilter === "all" ? "active" : ""}`}
+                                                onClick={() => setAttendanceFilter("all")}
+                                            >
+                                                הכל
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`filter-pill pill-yes ${attendanceFilter === "yes" ? "active" : ""}`}
+                                                onClick={() => setAttendanceFilter("yes")}
+                                            >
+                                                מגיעים <span className="pill-count">{sideCounts.attendingGuests}</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`filter-pill pill-no ${attendanceFilter === "no" ? "active" : ""}`}
+                                                onClick={() => setAttendanceFilter("no")}
+                                            >
+                                                לא מגיעים <span className="pill-count">{sideCounts.notAttendingCount}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Filter status & clear bar */}
+                                <div className="filters-status-bar">
+                                    <div className="filters-summary">
+                                        <div className="summary-highlight-pill">
+                                            <span className="summary-big-num">{filteredStats.totalGuests}</span>
+                                            <span className="summary-big-label">אורחים מגיעים בסה״כ</span>
+                                        </div>
+                                        <div className="summary-meta">
+                                            <span>מתוך <strong>{filteredStats.totalCount}</strong> משפחות / רשומות (מתוך {data.rsvps.length} בסה״כ)</span>
+                                        </div>
+                                    </div>
+                                    {hasActiveFilters && (
+                                        <button
+                                            type="button"
+                                            className="reset-filters-btn"
+                                            onClick={resetFilters}
+                                        >
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+                                                <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M3 3v5h5" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                            איפוס כל המסננים
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
                             <div className="table-scroll">
                                 <table className="rsvp-table">
                                     <thead>
                                         <tr>
-                                            <th>שם</th>
-                                            <th>מגיע?</th>
-                                            <th>צד</th>
-                                            <th>אורחים</th>
+                                            <th className="th-sortable" onClick={() => handleSort('names')} title="לחץ למיון לפי שם">
+                                                <div className="th-content">
+                                                    <span>שם</span>
+                                                    <SortIndicator active={sortConfig.key === 'names'} direction={sortConfig.direction} />
+                                                </div>
+                                            </th>
+                                            <th className="th-sortable" onClick={() => handleSort('is_attending')} title="לחץ למיון לפי הגעה">
+                                                <div className="th-content">
+                                                    <span>מגיע?</span>
+                                                    <SortIndicator active={sortConfig.key === 'is_attending'} direction={sortConfig.direction} />
+                                                </div>
+                                            </th>
+                                            <th className="th-sortable" onClick={() => handleSort('side')} title="לחץ למיון לפי צד חתן / כלה">
+                                                <div className="th-content">
+                                                    <span>צד</span>
+                                                    <SortIndicator active={sortConfig.key === 'side'} direction={sortConfig.direction} />
+                                                </div>
+                                            </th>
+                                            <th className="th-sortable" onClick={() => handleSort('guest_count')} title="לחץ למיון לפי כמות אורחים">
+                                                <div className="th-content">
+                                                    <span>אורחים</span>
+                                                    <SortIndicator active={sortConfig.key === 'guest_count'} direction={sortConfig.direction} />
+                                                </div>
+                                            </th>
                                             <th>אירועים</th>
                                             <th>טלפון</th>
                                             <th>הערות מנהל</th>
-                                            <th>תאריך</th>
+                                            <th className="th-sortable" onClick={() => handleSort('created_at')} title="לחץ למיון לפי תאריך">
+                                                <div className="th-content">
+                                                    <span>תאריך</span>
+                                                    <SortIndicator active={sortConfig.key === 'created_at'} direction={sortConfig.direction} />
+                                                </div>
+                                            </th>
                                             <th>פעולות</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {data.rsvps.map((rsvp) => {
+                                        {filteredAndSortedRsvps.map((rsvp) => {
                                             const isEditing = editingId === rsvp.id;
                                             return (
-                                            <tr key={rsvp.id} className={isEditing ? 'editing-row' : ''}>
-                                                {/* שם */}
-                                                <td className="td-name">
-                                                    {isEditing ? (
-                                                        <input
-                                                            className="edit-input"
-                                                            value={editForm.names}
-                                                            onChange={(e) => handleEditChange('names', e.target.value)}
-                                                        />
-                                                    ) : rsvp.names}
-                                                </td>
-                                                {/* מגיע? */}
-                                                <td>
-                                                    {rsvp.is_attending === 1
-                                                        ? <span className="badge badge-yes">כן ✓</span>
-                                                        : <span className="badge badge-no">לא</span>}
-                                                </td>
-                                                {/* צד */}
-                                                <td>
-                                                    {isEditing ? (
-                                                        <select
-                                                            className="edit-select"
-                                                            value={editForm.side}
-                                                            onChange={(e) => handleEditChange('side', e.target.value)}
-                                                        >
-                                                            <option value="">לא צוין</option>
-                                                            <option value="חתן">חתן</option>
-                                                            <option value="כלה">כלה</option>
-                                                        </select>
-                                                    ) : rsvp.side === "חתן" ? (
-                                                        <span className="badge" style={{ background: 'rgba(91,138,114,0.12)', color: '#3A7A50' }}>חתן</span>
-                                                    ) : rsvp.side === "כלה" ? (
-                                                        <span className="badge" style={{ background: 'rgba(201,128,106,0.12)', color: '#9A5040' }}>כלה</span>
-                                                    ) : (
-                                                        <span className="td-muted">—</span>
-                                                    )}
-                                                </td>
-                                                {/* אורחים */}
-                                                <td className="td-muted">
-                                                    {isEditing ? (
-                                                        <input
-                                                            className="edit-input edit-input-sm"
-                                                            type="number"
-                                                            min="0"
-                                                            value={editForm.guest_count}
-                                                            onChange={(e) => handleEditChange('guest_count', parseInt(e.target.value) || 0)}
-                                                        />
-                                                    ) : rsvp.is_attending === 1 ? rsvp.guest_count : "—"}
-                                                </td>
-                                                {/* אירועים */}
-                                                <td className="td-muted td-events">
-                                                    {rsvp.is_attending === 1 ? (
-                                                        rsvp.guests?.length > 0
-                                                            ? rsvp.guests.map(g => {
-                                                                let t = [];
-                                                                if (g.chuppah) t.push("חופה");
-                                                                if (g.eat !== false) t.push("אוכל");
-                                                                return t.join("+");
-                                                            }).join(", ")
-                                                            : rsvp.attendance_type
-                                                    ) : "—"}
-                                                </td>
-                                                {/* טלפון */}
-                                                <td className="td-phone" dir="ltr">
-                                                    {isEditing ? (
-                                                        <input
-                                                            className="edit-input edit-input-sm"
-                                                            value={editForm.phone}
-                                                            onChange={(e) => handleEditChange('phone', e.target.value)}
-                                                            dir="ltr"
-                                                        />
-                                                    ) : rsvp.phone || "—"}
-                                                </td>
-                                                {/* הערות מנהל */}
-                                                <td className="td-muted">
-                                                    {isEditing ? (
-                                                        <input
-                                                            className="edit-input"
-                                                            value={editForm.admin_notes}
-                                                            onChange={(e) => handleEditChange('admin_notes', e.target.value)}
-                                                            placeholder="הערות..."
-                                                        />
-                                                    ) : rsvp.admin_notes || "—"}
-                                                </td>
-                                                {/* תאריך */}
-                                                <td className="td-date">{new Date(rsvp.created_at).toLocaleDateString('he-IL')}</td>
-                                                {/* פעולות */}
-                                                <td className="td-actions">
-                                                    {isEditing ? (
-                                                        <div className="edit-actions">
-                                                            <button onClick={handleEditSave} className="save-btn" disabled={isSaving}>
-                                                                {isSaving ? "שומר..." : "שמור"}
-                                                            </button>
-                                                            <button onClick={handleEditCancel} className="cancel-btn" disabled={isSaving}>
-                                                                ביטול
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="edit-actions">
-                                                            <button onClick={() => handleEdit(rsvp)} className="edit-btn">עריכה</button>
-                                                            <button onClick={() => handleDelete(rsvp.id, rsvp.names)} className="delete-btn">מחיקה</button>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            </tr>
+                                                <tr key={rsvp.id} className={isEditing ? 'editing-row' : ''}>
+                                                    {/* שם */}
+                                                    <td className="td-name">
+                                                        {isEditing ? (
+                                                            <input
+                                                                className="edit-input"
+                                                                value={editForm.names}
+                                                                onChange={(e) => handleEditChange('names', e.target.value)}
+                                                            />
+                                                        ) : rsvp.names}
+                                                    </td>
+                                                    {/* מגיע? */}
+                                                    <td>
+                                                        {rsvp.is_attending === 1
+                                                            ? <span className="badge badge-yes">כן ✓</span>
+                                                            : <span className="badge badge-no">לא</span>}
+                                                    </td>
+                                                    {/* צד */}
+                                                    <td>
+                                                        {isEditing ? (
+                                                            <select
+                                                                className="edit-select"
+                                                                value={editForm.side}
+                                                                onChange={(e) => handleEditChange('side', e.target.value)}
+                                                            >
+                                                                <option value="">לא צוין</option>
+                                                                <option value="חתן">חתן</option>
+                                                                <option value="כלה">כלה</option>
+                                                            </select>
+                                                        ) : rsvp.side === "חתן" ? (
+                                                            <span className="badge" style={{ background: 'rgba(91,138,114,0.12)', color: '#3A7A50' }}>חתן</span>
+                                                        ) : rsvp.side === "כלה" ? (
+                                                            <span className="badge" style={{ background: 'rgba(201,128,106,0.12)', color: '#9A5040' }}>כלה</span>
+                                                        ) : (
+                                                            <span className="td-muted">—</span>
+                                                        )}
+                                                    </td>
+                                                    {/* אורחים */}
+                                                    <td className="td-muted">
+                                                        {isEditing ? (
+                                                            <input
+                                                                className="edit-input edit-input-sm"
+                                                                type="number"
+                                                                min="0"
+                                                                value={editForm.guest_count}
+                                                                onChange={(e) => handleEditChange('guest_count', parseInt(e.target.value) || 0)}
+                                                            />
+                                                        ) : rsvp.is_attending === 1 ? rsvp.guest_count : "—"}
+                                                    </td>
+                                                    {/* אירועים */}
+                                                    <td className="td-muted td-events">
+                                                        {rsvp.is_attending === 1 ? (
+                                                            rsvp.guests?.length > 0
+                                                                ? rsvp.guests.map(g => {
+                                                                    let t = [];
+                                                                    if (g.chuppah) t.push("חופה");
+                                                                    if (g.eat !== false) t.push("אוכל");
+                                                                    return t.join("+");
+                                                                }).join(", ")
+                                                                : rsvp.attendance_type
+                                                        ) : "—"}
+                                                    </td>
+                                                    {/* טלפון */}
+                                                    <td className="td-phone" dir="ltr">
+                                                        {isEditing ? (
+                                                            <input
+                                                                className="edit-input edit-input-sm"
+                                                                value={editForm.phone}
+                                                                onChange={(e) => handleEditChange('phone', e.target.value)}
+                                                                dir="ltr"
+                                                            />
+                                                        ) : rsvp.phone || "—"}
+                                                    </td>
+                                                    {/* הערות מנהל */}
+                                                    <td className="td-muted">
+                                                        {isEditing ? (
+                                                            <input
+                                                                className="edit-input"
+                                                                value={editForm.admin_notes}
+                                                                onChange={(e) => handleEditChange('admin_notes', e.target.value)}
+                                                                placeholder="הערות..."
+                                                            />
+                                                        ) : rsvp.admin_notes || "—"}
+                                                    </td>
+                                                    {/* תאריך */}
+                                                    <td className="td-date">{new Date(rsvp.created_at).toLocaleDateString('he-IL')}</td>
+                                                    {/* פעולות */}
+                                                    <td className="td-actions">
+                                                        {isEditing ? (
+                                                            <div className="edit-actions">
+                                                                <button onClick={handleEditSave} className="save-btn" disabled={isSaving}>
+                                                                    {isSaving ? "שומר..." : "שמור"}
+                                                                </button>
+                                                                <button onClick={handleEditCancel} className="cancel-btn" disabled={isSaving}>
+                                                                    ביטול
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="edit-actions">
+                                                                <button onClick={() => handleEdit(rsvp)} className="edit-btn">עריכה</button>
+                                                                <button onClick={() => handleDelete(rsvp.id, rsvp.names)} className="delete-btn">מחיקה</button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
                                             );
                                         })}
-                                        {data.rsvps.length === 0 && (
+                                        {filteredAndSortedRsvps.length === 0 && (
                                             <tr>
-                                                <td colSpan="9" className="td-empty">אין עדיין תגובות...</td>
+                                                <td colSpan="9" className="td-empty">
+                                                    {data.rsvps.length === 0 ? (
+                                                        "אין עדיין תגובות..."
+                                                    ) : (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
+                                                            <span>לא נמצאו רשומות התואמות את הסינון הנוכחי.</span>
+                                                            <button type="button" onClick={resetFilters} className="reset-filters-btn">
+                                                                איפוס מסננים
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -693,7 +982,7 @@ export default function AdminDashboard() {
                 </section>
 
                 {/* ── Gifts Table Section ── */}
-                <section className="table-section" style={{ marginTop: '1rem' }}>
+                {/* <section className="table-section" style={{ marginTop: '1rem' }}>
                     <div className="table-header">
                         <div>
                             <h2 className="table-title">רשימת מתנות שנבחרו</h2>
@@ -776,7 +1065,7 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     )}
-                </section>
+                </section> */}
             </div>
 
             <style>{adminStyles}</style>
@@ -1103,6 +1392,238 @@ const adminStyles = `
   .table-toggle:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(140,100,60,0.3); }
 
   .table-wrap { animation: cardIn 0.5s both; }
+
+  /* ── Table Filters ── */
+  .table-filters-container {
+    padding: 1.25rem 1.5rem;
+    background: rgba(212,184,150,0.06);
+    border-bottom: 1px solid rgba(180,140,100,0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+  }
+
+  .search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 220px;
+    max-width: 320px;
+  }
+
+  .search-icon {
+    position: absolute;
+    right: 0.85rem;
+    color: var(--text-light);
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.5rem 2.3rem 0.5rem 2rem;
+    background: rgba(255,252,246,0.95);
+    border: 1px solid rgba(180,140,100,0.25);
+    border-radius: 2rem;
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    color: var(--text-dark);
+    outline: none;
+    transition: all 0.2s;
+  }
+  .search-input:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(180,140,100,0.15);
+  }
+
+  .search-clear-btn {
+    position: absolute;
+    left: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.2rem;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+  .search-clear-btn:hover {
+    color: var(--text-dark);
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-group-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-mid);
+  }
+
+  .filter-pills {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(180,140,100,0.08);
+    padding: 0.25rem;
+    border-radius: 2rem;
+    border: 1px solid rgba(180,140,100,0.15);
+  }
+
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.7rem;
+    border-radius: 1.5rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-mid);
+    font-family: var(--font-body);
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .filter-pill:hover {
+    color: var(--text-dark);
+    background: rgba(255,252,246,0.6);
+  }
+
+  .filter-pill.active {
+    background: #FAF5EE;
+    color: var(--text-dark);
+    font-weight: 600;
+    border-color: rgba(180,140,100,0.25);
+    box-shadow: 0 2px 8px rgba(90,60,30,0.08);
+  }
+
+  .filter-pill.pill-groom.active {
+    background: rgba(91,138,114,0.16);
+    color: #2F6443;
+    border-color: rgba(91,138,114,0.35);
+  }
+
+  .filter-pill.pill-bride.active {
+    background: rgba(201,128,106,0.16);
+    color: #8D4133;
+    border-color: rgba(201,128,106,0.35);
+  }
+
+  .filter-pill.pill-yes.active {
+    background: rgba(74,139,92,0.16);
+    color: #2D653E;
+    border-color: rgba(74,139,92,0.35);
+  }
+
+  .filter-pill.pill-no.active {
+    background: rgba(201,128,106,0.16);
+    color: #8D4133;
+    border-color: rgba(201,128,106,0.35);
+  }
+
+  .pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 1rem;
+    background: rgba(180,140,100,0.15);
+    color: var(--text-mid);
+    line-height: 1;
+    font-weight: 600;
+  }
+
+  .filter-pill.active .pill-count {
+    background: rgba(180,140,100,0.25);
+    color: var(--text-dark);
+  }
+
+  /* ── Filter Status Bar ── */
+  .filters-status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 0.85rem 1.15rem;
+    background: rgba(255,252,246,0.92);
+    border: 1px solid rgba(180,140,100,0.18);
+    border-radius: 1.1rem;
+    box-shadow: 0 2px 10px rgba(90,60,30,0.03);
+  }
+
+  .filters-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .summary-highlight-pill {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    background: linear-gradient(135deg, rgba(180,140,100,0.16), rgba(212,184,150,0.22));
+    border: 1px solid rgba(180,140,100,0.3);
+    padding: 0.35rem 0.85rem;
+    border-radius: 2rem;
+  }
+
+  .summary-big-num {
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--gold-deep);
+    font-family: var(--font-body);
+  }
+
+  .summary-big-label {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+
+  .summary-meta {
+    font-size: 0.8rem;
+    color: var(--text-mid);
+  }
+
+  .reset-filters-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(180,140,100,0.12);
+    border: 1px solid rgba(180,140,100,0.25);
+    color: var(--text-dark);
+    border-radius: 1rem;
+    padding: 0.35rem 0.85rem;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .reset-filters-btn:hover {
+    background: rgba(180,140,100,0.22);
+    color: var(--gold-deep);
+  }
+
   .table-scroll { overflow-x: auto; }
   .rsvp-table { width: 100%; text-align: right; border-collapse: collapse; }
   .rsvp-table thead { background: rgba(212,184,150,0.08); }
@@ -1112,6 +1633,35 @@ const adminStyles = `
     color: var(--text-light); letter-spacing: 0.03em;
     white-space: nowrap;
     border-bottom: 1px solid rgba(180,140,100,0.1);
+  }
+
+  /* ── Sortable Column Headers ── */
+  .th-sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s, color 0.15s;
+  }
+  .th-sortable:hover {
+    background: rgba(180,140,100,0.12) !important;
+    color: var(--text-dark);
+  }
+  .th-content {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+  .sort-indicator {
+    display: inline-block;
+    font-size: 0.72rem;
+    color: var(--text-light);
+    opacity: 0.4;
+    transition: opacity 0.2s, color 0.2s;
+  }
+  .sort-indicator.active {
+    opacity: 1;
+    color: var(--gold-deep);
+    font-weight: 700;
   }
   .rsvp-table tbody tr {
     border-bottom: 1px solid rgba(180,140,100,0.07);
@@ -1251,10 +1801,111 @@ const adminStyles = `
   .badge-yes { background: rgba(74,139,92,0.1); color: #3A7A50; }
   .badge-no { background: rgba(201,128,106,0.1); color: #9A4030; }
 
+  @media (max-width: 860px) {
+    .table-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+      padding: 1.25rem 1rem 1rem;
+    }
+    .table-actions {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .table-toggle {
+      flex: 1 1 calc(50% - 0.5rem);
+      justify-content: center;
+      font-size: 0.78rem;
+      padding: 0.5rem;
+      text-align: center;
+    }
+    .table-filters-container {
+      padding: 1rem 0.9rem;
+      gap: 0.85rem;
+    }
+    .filters-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.8rem;
+    }
+    .search-box {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+    .filter-group {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.35rem;
+    }
+    .filter-pills {
+      display: flex;
+      width: 100%;
+      box-sizing: border-box;
+      gap: 0.25rem;
+      padding: 0.25rem;
+      border-radius: 0.9rem;
+    }
+    .filter-pill {
+      flex: 1 1 0;
+      min-width: 0;
+      justify-content: center;
+      padding: 0.45rem 0.25rem;
+      font-size: 0.74rem;
+      text-align: center;
+    }
+    .filters-status-bar {
+      flex-direction: column;
+      align-items: stretch;
+      text-align: center;
+      gap: 0.75rem;
+      padding: 0.85rem;
+    }
+    .filters-summary {
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      width: 100%;
+    }
+    .reset-filters-btn {
+      width: 100%;
+      justify-content: center;
+      padding: 0.55rem;
+      font-size: 0.8rem;
+    }
+    .rsvp-table th, .rsvp-table td {
+      padding: 0.65rem 0.75rem;
+      font-size: 0.8rem;
+    }
+  }
+
   @media (max-width: 500px) {
     .dash-content { padding: 1.25rem 0.9rem 3rem; }
     .kpi-grid { grid-template-columns: 1fr 1fr; }
     .donut-wrap { flex-direction: column; }
     .calc-results { flex-direction: column; gap: 1.25rem; }
+    .table-toggle {
+      flex: 1 1 100%;
+    }
+    .filter-pill {
+      font-size: 0.7rem;
+      padding: 0.4rem 0.2rem;
+    }
+    .pill-count {
+      font-size: 0.62rem;
+      padding: 0.05rem 0.25rem;
+    }
+    .summary-big-num {
+      font-size: 1.3rem;
+    }
+    .summary-big-label {
+      font-size: 0.76rem;
+    }
+    .summary-meta {
+      font-size: 0.72rem;
+    }
   }
 `;
