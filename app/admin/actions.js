@@ -26,6 +26,7 @@ export async function fetchStats(passcode) {
             guests: doc.guests,
             side: doc.side || "",
             admin_notes: doc.admin_notes || "",
+            tableNumber: doc.tableNumber || null,
             created_at: doc.created_at ? doc.created_at.toISOString() : null
         }));
 
@@ -257,5 +258,52 @@ export async function updateRsvp(passcode, id, updates) {
     } catch (error) {
         console.error("Failed to update rsvp", error);
         return { error: "שגיאה בעדכון הרשומה" };
+    }
+}
+
+/**
+ * Assign a table number to a specific guest within an RSVP record.
+ * Uses dot-notation to update only guests[guestIndex].tableNumber.
+ */
+export async function updateGuestTable(passcode, rsvpId, guestIndex, tableNumber) {
+    if (passcode !== ADMIN_PASSCODE) {
+        return { error: "סיסמה שגויה" };
+    }
+
+    const idx = parseInt(guestIndex, 10);
+    if (isNaN(idx) || idx < 0) {
+        return { error: "אינדקס אורח לא תקין" };
+    }
+
+    // Validate table number (1-9 or null to clear)
+    let tableVal = null;
+    if (tableNumber !== null && tableNumber !== undefined && tableNumber !== "") {
+        tableVal = parseInt(tableNumber, 10);
+        if (isNaN(tableVal) || tableVal < 1 || tableVal > 9) {
+            return { error: "מספר שולחן לא תקין (1-9)" };
+        }
+    }
+
+    try {
+        const client = await clientPromise;
+        const db = client.db("wedding");
+
+        const setField = `guests.${idx}.tableNumber`;
+        if (tableVal === null) {
+            await db.collection("rsvps").updateOne(
+                { _id: new ObjectId(rsvpId) },
+                { $unset: { [setField]: "" }, $set: { updated_at: new Date() } }
+            );
+        } else {
+            await db.collection("rsvps").updateOne(
+                { _id: new ObjectId(rsvpId) },
+                { $set: { [setField]: tableVal, updated_at: new Date() } }
+            );
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update guest table:", error);
+        return { error: "שגיאה בעדכון שולחן" };
     }
 }
