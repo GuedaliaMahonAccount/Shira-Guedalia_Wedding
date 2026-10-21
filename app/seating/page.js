@@ -64,6 +64,7 @@ export default function SeatingPage() {
     const debounceRef = useRef(null);
     const inputRef = useRef(null);
     const resultRef = useRef(null);
+    const diagramRef = useRef(null);
 
     const allTables = useMemo(() => [...MEN_TABLES, ...WOMEN_TABLES], []);
 
@@ -74,6 +75,7 @@ export default function SeatingPage() {
         })();
         return () => debounceRef.current && clearTimeout(debounceRef.current);
     }, []);
+
 
     const resetResults = () => {
         setResults(null);
@@ -152,7 +154,7 @@ export default function SeatingPage() {
                     <p className="seating-not-assigned-text">
                         מידע על המושב שלכם עדיין לא זמין.
                         <br />
-                        אנא פנו לסדרן המושבים לעזרה.
+                        אנא פנו לאחראים לעזרה.
                     </p>
                     {back}
                 </div>
@@ -202,7 +204,12 @@ export default function SeatingPage() {
                 <div className="seating-no-results" role="status">
                     <p className="seating-no-results-text">לא מצאנו את השם הזה.</p>
                     <p className="seating-no-results-hint">
-                        נסו לכתוב רק שם פרטי או רק שם משפחה, או פנו לסדרן המושבים.
+                        נסו לחפש איזה שולחן הכי מתאים לכם
+                        <br />
+                        או שאלו את האחראים.
+                    </p>
+                    <p className="seating-no-results-subhint">
+                        👇 אפשר ללחוץ על כל שולחן למטה כדי לראות מי יושב בו
                     </p>
                 </div>
             );
@@ -290,64 +297,75 @@ export default function SeatingPage() {
                     {renderResults()}
                 </div>
 
-                <section className="seating-browse">
-                    {/* <button
-                        type="button"
-                        className="seating-browse-toggle"
-                        aria-expanded={browseOpen}
-                        onClick={() => setBrowseOpen((v) => !v)}
-                    >
-                        {browseOpen ? "הסתר את כל השולחנות" : "או עיינו בכל השולחנות"}
-                        <span className={`seating-browse-arrow ${browseOpen ? "is-open" : ""}`} aria-hidden="true">▾</span>
-                    </button> */}
+                <section className="seating-browse" aria-label="עיון בכל השולחנות">
+                    <div className="seating-browse-header">
+                        <h2 className="seating-browse-title">כל השולחנות</h2>
+                        <p className="seating-browse-instruction">
+                            <span className="seating-browse-tap-icon" aria-hidden="true">👆</span>
+                            לחצו על שולחן כדי לראות מי יושב בו
+                        </p>
+                    </div>
 
-                    {browseOpen && (
-                        <div className="seating-browse-body">
-                            <div className="seating-tabs" role="tablist">
-                                {[
-                                    ["men", "גברים"],
-                                    ["women", "נשים"],
-                                ].map(([key, label]) => (
-                                    <button
-                                        key={key}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={tab === key}
-                                        className={`seating-tab ${tab === key ? "is-active" : ""}`}
-                                        onClick={() => {
-                                            setTab(key);
-                                            setOpenTable(null);
-                                        }}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
-                            </div>
+                    <div className="seating-browse-body">
+                        <div className="seating-tabs" role="tablist">
+                            {[
+                                ["men", "גברים"],
+                                ["women", "נשים"],
+                            ].map(([key, label]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={tab === key}
+                                    className={`seating-tab ${tab === key ? "is-active" : ""}`}
+                                    onClick={() => {
+                                        setTab(key);
+                                        setOpenTable(null);
+                                    }}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
 
-                            <div className="seating-mini-grid">
-                                {list.map((t) => (
+                        <div className="seating-mini-grid">
+                            {list.map((t) => {
+                                const isSelected = openTable === t.number;
+                                return (
                                     <button
                                         key={t.number}
                                         type="button"
-                                        className={`seating-mini ${openTable === t.number ? "is-active" : ""}`}
-                                        aria-pressed={openTable === t.number}
-                                        onClick={() => setOpenTable(openTable === t.number ? null : t.number)}
+                                        className={`seating-mini ${isSelected ? "is-active" : ""}`}
+                                        aria-pressed={isSelected}
+                                        onClick={() => {
+                                            const next = isSelected ? null : t.number;
+                                            setOpenTable(next);
+                                            if (next) {
+                                                setTimeout(() => {
+                                                    diagramRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                                                }, 100);
+                                            }
+                                        }}
                                     >
                                         <span className="seating-mini-number">{t.number}</span>
                                         <span className="seating-mini-category">{t.category}</span>
+                                        <span className="seating-mini-action">
+                                            {isSelected ? "פתוח ✓" : "לחצו לצפייה"}
+                                        </span>
                                     </button>
-                                ))}
-                            </div>
-
-                            {current && (
-                                <div className="seating-card seating-diagram-card seating-browse-diagram">
-                                    <p className="seating-diagram-title">{current.category}</p>
-                                    <SquareTable table={current} guests={tableGuests[current.number]} />
-                                </div>
-                            )}
+                                );
+                            })}
                         </div>
-                    )}
+
+                        {current && (
+                            <div ref={diagramRef} className="seating-card seating-diagram-card seating-browse-diagram">
+                                <p className="seating-diagram-title">שולחן {current.number} — {current.category}</p>
+                                <SquareTable table={current} guests={tableGuests[current.number]} />
+                            </div>
+                        )}
+                    </div>
                 </section>
+
 
                 <footer className="seating-footer">
                     <p className="seating-footer-text">נשמח לראותכם ביום שמחתנו ♡</p>

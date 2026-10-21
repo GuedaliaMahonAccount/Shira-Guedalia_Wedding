@@ -3,6 +3,8 @@
 import clientPromise from "../../lib/db";
 import * as XLSX from 'xlsx';
 import { ObjectId } from 'mongodb';
+import { revalidatePath } from 'next/cache';
+import { getTableByNumber } from "../../lib/tables";
 
 const ADMIN_PASSCODE = "guedalia050504";
 
@@ -15,7 +17,12 @@ export async function fetchStats(passcode) {
         const client = await clientPromise;
         const db = client.db("wedding");
 
-        const docs = await db.collection("rsvps").find().sort({ created_at: -1 }).toArray();
+        const [docs, settingDoc] = await Promise.all([
+            db.collection("rsvps").find().sort({ created_at: -1 }).toArray(),
+            db.collection("settings").findOne({ key: "hasCoupleTable" })
+        ]);
+        const hasCoupleTable = settingDoc ? Boolean(settingDoc.value) : false;
+
         const rawRsvps = docs.map(doc => ({
             id: doc._id.toString(),
             names: doc.names,
@@ -27,6 +34,7 @@ export async function fetchStats(passcode) {
             side: doc.side || "",
             admin_notes: doc.admin_notes || "",
             tableNumber: doc.tableNumber || null,
+            is_couple: doc.is_couple || false,
             created_at: doc.created_at ? doc.created_at.toISOString() : null
         }));
 
@@ -87,7 +95,7 @@ export async function fetchStats(passcode) {
             }
         });
 
-        return { success: true, stats, rsvps: rawRsvps };
+        return { success: true, stats, rsvps: rawRsvps, hasCoupleTable };
     } catch (error) {
         console.error("Failed to fetch statistics", error);
         return { error: "שגיאה בטעינת הנתונים" };
@@ -275,12 +283,12 @@ export async function updateGuestTable(passcode, rsvpId, guestIndex, tableNumber
         return { error: "אינדקס אורח לא תקין" };
     }
 
-    // Validate table number (1-9 or null to clear)
+    // Validate table number (valid configured table or null to clear)
     let tableVal = null;
     if (tableNumber !== null && tableNumber !== undefined && tableNumber !== "") {
         tableVal = parseInt(tableNumber, 10);
-        if (isNaN(tableVal) || tableVal < 1 || tableVal > 9) {
-            return { error: "מספר שולחן לא תקין (1-9)" };
+        if (isNaN(tableVal) || !getTableByNumber(tableVal)) {
+            return { error: "מספר שולחן לא תקין" };
         }
     }
 
@@ -307,3 +315,90 @@ export async function updateGuestTable(passcode, rsvpId, guestIndex, tableNumber
         return { error: "שגיאה בעדכון שולחן" };
     }
 }
+
+/**
+ * Toggle the Bride & Groom table (table 1000, 2 seats).
+ * When enabled:
+ *   - saves hasCoupleTable: true in settings
+ *   - ensures an RSVP for "גדליה ושירה" exists and is seated at table 1000
+ * When disabled:
+ *   - saves hasCoupleTable: false in settings
+ *   - removes the couple's RSVP and unseats any guests at table 1000
+ */
+export async function toggleCoupleTable(passcode, enabled) {
+    if (passcode !== ADMIN_PASSCODE) {
+        return { error: "סיסמה שגויה" };
+    }
+
+    try {
+        const client = await clientPromise;
+        const db = client.db("wedding");
+        const isEnabled = Boolean(enabled);
+
+        // 1. Persist the toggle setting
+        await db.collection("settings").updateOne(
+            { key: "hasCoupleTable" },
+            { $set: { key: "hasCoupleTable", value: isEnabled, updated_at: new Date() } },
+            { upsert: true }
+        );
+
+        if (isEnabled) {
+            // 2. Add or restore RSVP for "גדליה ושירה"
+            const coupleRsvp = await db.collection("rsvps").findOne({
+                $or: [
+                    { is_couple: true },
+                    { names: "גדליה ושירה" }
+                ]
+            });
+
+            const coupleData = {
+                names: "גדליה ושירה",
+                guest_count: 2,
+                phone: "",
+                attendance_type: "חופה + אוכל",
+                side: "חתן וכלה",
+                is_attending: 1,
+                is_couple: true,
+                admin_notes: "שולחן חתן וכלה (2 מקומות)",
+                guests: [
+                    { name: "גדליה", chuppah: true, eat: true, dance: true, tableNumber: 1000 },
+                    { name: "שירה", chuppah: true, eat: true, dance: true, tableNumber: 1000 }
+                ],
+                updated_at: new Date()
+            };
+
+            if (coupleRsvp) {
+                await db.collection("rsvps").updateOne(
+                    { _id: coupleRsvp._id },
+                    { $set: coupleData }
+                );
+            } else {
+                await db.collection("rsvps").insertOne({
+                    ...coupleData,
+                    created_at: new Date()
+                });
+            }
+        } else {
+            // 3. Remove the couple's RSVP and unassign table 1000
+            await db.collection("rsvps").deleteMany({
+                $or: [
+                    { is_couple: true },
+                    { names: "גדליה ושירה" }
+                ]
+            });
+
+            await db.collection("rsvps").updateMany(
+                { "guests.tableNumber": 1000 },
+                { $unset: { "guests.$.tableNumber": "" } }
+            );
+        }
+
+        revalidatePath("/admin");
+        revalidatePath("/seating");
+        return { success: true, hasCoupleTable: isEnabled };
+    } catch (error) {
+        console.error("Failed to toggle couple table:", error);
+        return { error: "שגיאה בעדכון הגדרת שולחן חתן וכלה" };
+    }
+}
+

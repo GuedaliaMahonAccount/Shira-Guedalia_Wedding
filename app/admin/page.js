@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { fetchStats, exportGuestsData, deleteRsvp, updateRsvp, updateGuestTable } from "./actions";
-import { TABLES } from "../../lib/tables";
+import { fetchStats, exportGuestsData, deleteRsvp, updateRsvp, updateGuestTable, toggleCoupleTable } from "./actions";
+import { TABLES, COUPLE_TABLE } from "../../lib/tables";
 
 const MAX_PER_TABLE = 12;
 const isGroom = (s) => s === "חתן";
 const isBride = (s) => s === "כלה";
 const noSide = (s) => !isGroom(s) && !isBride(s);
-const tableLabel = (t) => `${t.number} ${t.section === "גברים" ? "♂" : "♀"}`;
+const tableLabel = (t) => t.isCouple ? `${t.number} 💍 חתן וכלה` : `${t.number} ${t.section === "גברים" ? "♂" : "♀"}`;
 
 // ── Hooks ────────────────────────────────────────────────────────
 function useInView(threshold = 0.3) {
@@ -132,6 +132,9 @@ export default function AdminDashboard() {
     const [editForm, setEditForm] = useState({});
     const [isSaving, setIsSaving] = useState(false);
 
+    const [hasCoupleTable, setHasCoupleTable] = useState(false);
+    const [isTogglingCoupleTable, setIsTogglingCoupleTable] = useState(false);
+
     const handleSort = (key) => {
         setSortConfig((prev) =>
             prev.key === key
@@ -207,7 +210,11 @@ export default function AdminDashboard() {
         setError(null);
         const res = await fetchStats(passcode);
         if (res.error) setError(res.error);
-        else { setData(res); setIsAuthenticated(true); }
+        else {
+            setData(res);
+            if (res.hasCoupleTable !== undefined) setHasCoupleTable(Boolean(res.hasCoupleTable));
+            setIsAuthenticated(true);
+        }
     };
 
     const handleExport = async (type) => {
@@ -262,10 +269,39 @@ export default function AdminDashboard() {
         if (res.error) alert(res.error); else handleLogin();
     };
 
+    const handleToggleCoupleTable = async () => {
+        const nextVal = !hasCoupleTable;
+        const msg = nextVal
+            ? "האם להפעיל שולחן חתן וכלה (שולחן 1000 — 2 מקומות)?\nפעולה זו תוסיף את 'גדליה ושירה' לרשימת המוזמנים (RSVP) ואת שולחן 1000 לסידורי ההושבה."
+            : "האם לבטל את שולחן חתן וכלה?\nפעולה זו תסיר את 'גדליה ושירה' מה-RSVP ותבטל את שולחן 1000.";
+        if (!window.confirm(msg)) return;
+
+        setIsTogglingCoupleTable(true);
+        try {
+            const res = await toggleCoupleTable(passcode, nextVal);
+            if (res.error) {
+                alert(res.error);
+            } else {
+                setHasCoupleTable(Boolean(res.hasCoupleTable));
+                const fresh = await fetchStats(passcode);
+                if (fresh.success) setData(fresh);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("שגיאה בעדכון שולחן חתן וכלה");
+        } finally {
+            setIsTogglingCoupleTable(false);
+        }
+    };
+
     // ── Seating ──
+    const adminTables = useMemo(() => {
+        return hasCoupleTable ? [...TABLES, COUPLE_TABLE] : TABLES;
+    }, [hasCoupleTable]);
+
     const { tableGroups, unassignedGuests, totalAssignedGuests } = useMemo(() => {
         const groups = {};
-        TABLES.forEach((t) => { groups[t.number] = { ...t, guests: [] }; });
+        adminTables.forEach((t) => { groups[t.number] = { ...t, guests: [] }; });
         const unassigned = [];
         let assigned = 0;
         (data?.rsvps || []).forEach((rsvp) => {
@@ -282,7 +318,7 @@ export default function AdminDashboard() {
             });
         });
         return { tableGroups: groups, unassignedGuests: unassigned, totalAssignedGuests: assigned };
-    }, [data?.rsvps]);
+    }, [data?.rsvps, adminTables]);
 
     // ── Login ──
     if (!isAuthenticated) {
@@ -559,6 +595,7 @@ export default function AdminDashboard() {
                                                             </select>
                                                         ) : isGroom(rsvp.side) ? <span className="badge badge-groom">חתן</span>
                                                             : isBride(rsvp.side) ? <span className="badge badge-bride">כלה</span>
+                                                                : (rsvp.side === "חתן וכלה" || rsvp.is_couple) ? <span className="badge badge-couple">💍 חתן וכלה</span>
                                                                 : <span className="td-muted">—</span>}
                                                     </td>
                                                     <td data-label="אורחים" className="td-muted">
@@ -600,7 +637,7 @@ export default function AdminDashboard() {
                                                                             <select className="edit-select select-mini" value={g.tableNumber || ""}
                                                                                 onChange={(e) => handleGuestTableChange(rsvp.id, gi, e.target.value)}>
                                                                                 <option value="">—</option>
-                                                                                {TABLES.map((t) => <option key={t.number} value={t.number}>{tableLabel(t)}</option>)}
+                                                                                {adminTables.map((t) => <option key={t.number} value={t.number}>{tableLabel(t)}</option>)}
                                                                             </select>
                                                                         </div>
                                                                     );
@@ -651,13 +688,46 @@ export default function AdminDashboard() {
                     <div className="admin-seating-header">
                         <div>
                             <h2 className="admin-seating-title">סידורי שולחנות וניהול הושבה</h2>
-                            <p className="admin-seating-sub">סקירת {TABLES.length} השולחנות (עד {MAX_PER_TABLE} איש לשולחן), זיהוי חריגות והעברת אורחים בקליק אחד</p>
+                            <p className="admin-seating-sub">סקירת {adminTables.length} השולחנות, זיהוי חריגות והעברת אורחים בקליק אחד</p>
                         </div>
                         <div className="admin-seating-stats-pills">
                             <span className="seating-stat-pill">משובצים: <strong>{totalAssignedGuests}</strong></span>
                             <span className={`seating-stat-pill ${unassignedGuests.length > 0 ? "warning" : "success"}`}>
                                 לא משובצים: <strong>{unassignedGuests.length}</strong>
                             </span>
+                        </div>
+                    </div>
+
+                    {/* Toggle שולחן חתן וכלה */}
+                    <div className="couple-control-card">
+                        <div className="couple-control-info">
+                            <div className="couple-control-icon">💍</div>
+                            <div>
+                                <h3 className="couple-control-title">שולחן חתן וכלה (שולחן 1000 — 2 מקומות)</h3>
+                                <p className="couple-control-desc">
+                                    {hasCoupleTable
+                                        ? "✓ מופעל: שולחן 1000 מוגדר ל-2 מקומות, ונוספו גדליה ושירה לרשימת המוזמנים (RSVP)"
+                                        : "✕ כבוי: אין שולחן חתן וכלה, השולחנות מוגדרים מ-1 עד 9 בלבד"}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="couple-control-actions">
+                            <span className={`couple-status-text ${hasCoupleTable ? "is-active" : ""}`}>
+                                {hasCoupleTable ? "יש שולחן חתן וכלה (כן)" : "ללא שולחן חתן וכלה (לא)"}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={handleToggleCoupleTable}
+                                disabled={isTogglingCoupleTable}
+                                className={`couple-toggle-btn ${hasCoupleTable ? "is-active" : ""}`}
+                                aria-label={hasCoupleTable ? "בטל שולחן חתן וכלה" : "הפעל שולחן חתן וכלה"}
+                                title="לחץ לשינוי הגדרת שולחן חתן וכלה"
+                            >
+                                <span className="toggle-slider-knob" />
+                                <span className="toggle-btn-text">
+                                    {isTogglingCoupleTable ? "מעדכן..." : hasCoupleTable ? "כן ✓" : "לא"}
+                                </span>
+                            </button>
                         </div>
                     </div>
 
@@ -677,11 +747,12 @@ export default function AdminDashboard() {
                                         <select className="table-assign-select" value="" aria-label={`שבץ את ${g.name} לשולחן`}
                                             onChange={(e) => handleGuestTableChange(g.rsvpId, g.guestIndex, e.target.value)}>
                                             <option value="" disabled>שבץ לשולחן...</option>
-                                            {TABLES.map((t) => {
+                                            {adminTables.map((t) => {
+                                                const maxSeats = t.seats || MAX_PER_TABLE;
                                                 const count = tableGroups[t.number]?.guests?.length || 0;
                                                 return (
-                                                    <option key={t.number} value={t.number} disabled={count >= MAX_PER_TABLE}>
-                                                        שולחן {t.number} ({t.category}) [{count}/{MAX_PER_TABLE}]
+                                                    <option key={t.number} value={t.number} disabled={count >= maxSeats}>
+                                                        שולחן {t.number} ({t.category}) [{count}/{maxSeats}]
                                                     </option>
                                                 );
                                             })}
@@ -693,40 +764,43 @@ export default function AdminDashboard() {
                     )}
 
                     <div className="admin-tables-grid">
-                        {TABLES.map((table) => {
+                        {adminTables.map((table) => {
+                            const maxSeats = table.seats || MAX_PER_TABLE;
                             const guests = tableGroups[table.number]?.guests || [];
                             const count = guests.length;
-                            const isOver = count > MAX_PER_TABLE;
-                            const isFull = count === MAX_PER_TABLE;
-                            const isNear = count >= MAX_PER_TABLE - 2 && count < MAX_PER_TABLE;
+                            const isOver = count > maxSeats;
+                            const isFull = count === maxSeats;
+                            const isNear = count >= maxSeats - 1 && count < maxSeats;
                             const state = isOver ? "over" : isFull ? "full" : isNear ? "near" : "";
 
                             return (
-                                <div key={table.number} className={`admin-table-card ${isOver ? "overloaded" : isFull ? "full" : ""}`}>
+                                <div key={table.number} className={`admin-table-card ${table.isCouple ? "couple-table-card" : ""} ${isOver ? "overloaded" : isFull ? "full" : ""}`}>
                                     <div className="admin-table-card-header">
                                         <div className="admin-table-id-group">
-                                            <div className="admin-table-circle-badge">{table.number}</div>
+                                            <div className="admin-table-circle-badge">{table.isCouple ? "💍" : table.number}</div>
                                             <div className="admin-table-id-text">
                                                 <div className="admin-table-title-row">
                                                     <span className="admin-table-number-text">שולחן {table.number}</span>
-                                                    <span className={`admin-table-gender-tag ${table.section === "גברים" ? "men" : "women"}`}>{table.section}</span>
+                                                    <span className={`admin-table-gender-tag ${table.isCouple ? "couple" : table.section === "גברים" ? "men" : "women"}`}>
+                                                        {table.isCouple ? "💍 חתן וכלה" : table.section}
+                                                    </span>
                                                 </div>
                                                 <div className="admin-table-category-text" title={table.category}>{table.category}</div>
                                             </div>
                                         </div>
                                         <div className={`capacity-gauge gauge-${state}`}>
-                                            <span className="capacity-numbers"><strong>{count}</strong> / {MAX_PER_TABLE}</span>
-                                            {isOver && <span className="over-alert-badge">חריגה! (+{count - MAX_PER_TABLE})</span>}
+                                            <span className="capacity-numbers"><strong>{count}</strong> / {maxSeats}</span>
+                                            {isOver && <span className="over-alert-badge">חריגה! (+{count - maxSeats})</span>}
                                         </div>
                                     </div>
 
                                     <div className="capacity-bar-track">
-                                        <div className={`capacity-bar-fill bar-${state}`} style={{ width: `${Math.min((count / MAX_PER_TABLE) * 100, 100)}%` }} />
+                                        <div className={`capacity-bar-fill bar-${state}`} style={{ width: `${Math.min((count / maxSeats) * 100, 100)}%` }} />
                                     </div>
 
                                     <div className="admin-table-guests-box">
                                         {count === 0 ? (
-                                            <div className="admin-table-empty">שולחן ריק ({MAX_PER_TABLE} מקומות פנויים)</div>
+                                            <div className="admin-table-empty">שולחן ריק ({maxSeats} מקומות פנויים)</div>
                                         ) : (
                                             <div className="admin-table-guests-list">
                                                 {guests.map((g, gi) => (
@@ -739,11 +813,12 @@ export default function AdminDashboard() {
                                                         <select className="quick-move-select" value={table.number} title="העבר לשולחן אחר" aria-label={`העבר את ${g.name} לשולחן אחר`}
                                                             onChange={(e) => handleGuestTableChange(g.rsvpId, g.guestIndex, e.target.value)}>
                                                             <option value="">הסר שיבוץ</option>
-                                                            {TABLES.map((o) => {
+                                                            {adminTables.map((o) => {
+                                                                const oMax = o.seats || MAX_PER_TABLE;
                                                                 const oc = tableGroups[o.number]?.guests?.length || 0;
                                                                 return (
                                                                     <option key={o.number} value={o.number}>
-                                                                        {o.number === table.number ? `✓ שולחן ${o.number}` : `← שולחן ${o.number} (${oc}/${MAX_PER_TABLE})`}
+                                                                        {o.number === table.number ? `✓ שולחן ${o.number}` : `← שולחן ${o.number} (${oc}/${oMax})`}
                                                                     </option>
                                                                 );
                                                             })}
@@ -969,6 +1044,7 @@ const adminStyles = `
   .badge-no { background: rgba(201,128,106,.1); color: #9A4030; }
   .badge-groom { background: rgba(91,138,114,.12); color: #3A7A50; }
   .badge-bride { background: rgba(201,128,106,.12); color: #9A5040; }
+  .badge-couple { background: rgba(180,140,100,.18); color: #8B6943; border: 1px solid rgba(180,140,100,.3); font-weight: 700; }
 
   /* Table → cards on tablets / phones */
   @media (max-width: 980px) {
@@ -1053,6 +1129,7 @@ const adminStyles = `
   .admin-table-gender-tag { font-size: .65rem; padding: .1rem .45rem; border-radius: 1rem; font-weight: 600; }
   .admin-table-gender-tag.men { background: rgba(100,140,180,.15); color: #355E82; border: 1px solid rgba(100,140,180,.25); }
   .admin-table-gender-tag.women { background: rgba(200,120,150,.15); color: #8C3960; border: 1px solid rgba(200,120,150,.25); }
+  .admin-table-gender-tag.couple { background: rgba(212,184,150,.3); color: #8B6943; border: 1px solid rgba(180,140,100,.45); }
   .admin-table-category-text { font-size: .74rem; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .capacity-gauge { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
@@ -1087,4 +1164,123 @@ const adminStyles = `
     .quick-move-select { width: 84px; padding: .4rem .3rem; }
     .admin-table-card { padding: .85rem; }
   }
-`;
+
+  /* Couple Table Toggle Card */
+  .couple-control-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1.1rem;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, rgba(255, 252, 246, 0.95), rgba(246, 236, 222, 0.9));
+    border: 1.5px solid rgba(180, 140, 100, 0.35);
+    border-radius: 1.1rem;
+    box-shadow: 0 4px 16px rgba(90, 60, 30, 0.05);
+  }
+  .couple-control-info {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    min-width: 0;
+    flex: 1 1 280px;
+  }
+  .couple-control-icon {
+    font-size: 1.7rem;
+    line-height: 1;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(180, 140, 100, 0.14);
+    border: 1px solid rgba(180, 140, 100, 0.25);
+    flex-shrink: 0;
+  }
+  .couple-control-title {
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-dark);
+  }
+  .couple-control-desc {
+    font-size: .8rem;
+    color: var(--text-mid);
+    margin: .2rem 0 0;
+    line-height: 1.35;
+  }
+  .couple-control-actions {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    flex-wrap: wrap;
+  }
+  .couple-status-text {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--text-light);
+  }
+  .couple-status-text.is-active {
+    color: #436345;
+  }
+  .couple-toggle-btn {
+    position: relative;
+    width: 86px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(180, 140, 100, 0.3);
+    background: #E8E0D4;
+    cursor: pointer;
+    transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    user-select: none;
+    outline: none;
+  }
+  .couple-toggle-btn.is-active {
+    background: linear-gradient(135deg, #4A8B5C, #5C9F6E);
+    border-color: #3D734B;
+    box-shadow: 0 2px 10px rgba(74, 139, 92, 0.3);
+  }
+  .couple-toggle-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+  .toggle-slider-knob {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #FFF;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: transform 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+    position: absolute;
+    right: 4px;
+  }
+  .couple-toggle-btn.is-active .toggle-slider-knob {
+    transform: translateX(-46px);
+    background: #FFF;
+  }
+  .toggle-btn-text {
+    width: 100%;
+    text-align: left;
+    padding-left: 10px;
+    font-size: .76rem;
+    font-weight: 700;
+    color: #6A564A;
+    pointer-events: none;
+  }
+  .couple-toggle-btn.is-active .toggle-btn-text {
+    text-align: right;
+    padding-left: 0;
+    padding-right: 10px;
+    color: #FFF;
+  }
+  .admin-table-card.couple-table-card {
+    border-color: rgba(180, 140, 100, 0.6);
+    background: linear-gradient(180deg, #FFFDF9 0%, #FAF3E8 100%);
+    box-shadow: 0 4px 18px rgba(180, 140, 100, 0.15);
+  }
+`;

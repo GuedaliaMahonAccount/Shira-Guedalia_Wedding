@@ -31,11 +31,12 @@ export async function searchGuestSeating(query) {
         const escaped = cleaned.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
         // Search in the `names` field and in the `guests[].name` sub-documents
-        // Only match RSVPs that are attending (is_attending === 1)
+        // Only match RSVPs that are attending (is_attending === 1), excluding couple/internal RSVP
         const docs = await db
             .collection("rsvps")
             .find({
                 is_attending: 1,
+                is_couple: { $ne: true },
                 $or: [
                     { names: { $regex: escaped, $options: "i" } },
                     { "guests.name": { $regex: escaped, $options: "i" } },
@@ -126,7 +127,7 @@ export async function getTableGuests() {
 
         const docs = await db
             .collection("rsvps")
-            .find({ is_attending: 1 })
+            .find({ is_attending: 1, is_couple: { $ne: true } })
             .toArray();
 
         const tableGuests = {};
@@ -138,7 +139,7 @@ export async function getTableGuests() {
                     if (!guestName || guestName === "אורח") continue;
 
                     const tableNumber = guest.tableNumber;
-                    if (!tableNumber) continue;
+                    if (!tableNumber || !getTableByNumber(tableNumber)) continue;
 
                     if (!tableGuests[tableNumber]) {
                         tableGuests[tableNumber] = [];
@@ -154,3 +155,5 @@ export async function getTableGuests() {
         return { tableGuests: {} };
     }
 }
+
+
